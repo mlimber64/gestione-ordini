@@ -26,7 +26,7 @@ class KafkaConfig {
 		// Spring Kafka 4 userebbe il suffisso "-dlt": si resta su ".DLT", il nome documentato nel progetto.
 		// Partizione -1: la sceglie il producer, così il topic dead-letter può avere meno partizioni dell'originale.
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(operations,
-				(record, ex) -> new TopicPartition(record.topic() + ".DLT", -1));
+				(failed, ex) -> new TopicPartition(failed.topic() + ".DLT", -1));
 		DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3));
 		handler.addNotRetryableExceptions(InvalidEventException.class);
 		return handler;

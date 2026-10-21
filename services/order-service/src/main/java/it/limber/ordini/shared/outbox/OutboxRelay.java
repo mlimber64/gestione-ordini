@@ -94,7 +94,7 @@ class OutboxRelay {
 		int sent = 0;
 		for (Pending event : batch) {
 			try {
-				kafka.send(record(event)).get(sendTimeoutSeconds, TimeUnit.SECONDS);
+				kafka.send(toMessage(event)).get(sendTimeoutSeconds, TimeUnit.SECONDS);
 			}
 			catch (InterruptedException ex) {
 				Thread.currentThread().interrupt();
@@ -118,11 +118,11 @@ class OutboxRelay {
 		return sent;
 	}
 
-	private static ProducerRecord<String, String> record(Pending event) {
-		ProducerRecord<String, String> record = new ProducerRecord<>(event.topic(), event.key(), event.payload());
-		record.headers().add("event-id", event.id().toString().getBytes(StandardCharsets.UTF_8));
-		record.headers().add("event-type", event.type().getBytes(StandardCharsets.UTF_8));
-		return record;
+	private static ProducerRecord<String, String> toMessage(Pending event) {
+		ProducerRecord<String, String> message = new ProducerRecord<>(event.topic(), event.key(), event.payload());
+		message.headers().add("event-id", event.id().toString().getBytes(StandardCharsets.UTF_8));
+		message.headers().add("event-type", event.type().getBytes(StandardCharsets.UTF_8));
+		return message;
 	}
 
 	/** Elimina gli eventi già pubblicati da più di una settimana: la tabella non cresce all'infinito. */
@@ -138,7 +138,7 @@ class OutboxRelay {
 		Long count = jdbc.sql("SELECT count(*) FROM orders.outbox_event WHERE published_at IS NULL")
 			.query(Long.class)
 			.single();
-		return count == null ? 0 : count;
+		return count == null ? 0 : (double) count;
 	}
 
 	private static String abbreviate(String text) {

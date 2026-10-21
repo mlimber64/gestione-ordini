@@ -264,8 +264,10 @@ export class OrderCreate {
   protected customerName = (value: CustomerSummary | string | null): string =>
     typeof value === 'string' ? value : (value?.name ?? '');
 
-  protected productLabel = (value: Product | string | null): string =>
-    typeof value === 'string' ? value : value ? `${value.sku} · ${value.name}` : '';
+  protected productLabel = (value: Product | string | null): string => {
+    if (typeof value === 'string') return value;
+    return value ? `${value.sku} · ${value.name}` : '';
+  };
 
   protected lineGross(line: Line): number {
     const net = Math.round(line.product.unitPrice * line.quantity * 100) / 100;

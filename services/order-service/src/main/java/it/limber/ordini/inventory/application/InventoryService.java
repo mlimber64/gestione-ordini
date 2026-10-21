@@ -72,7 +72,7 @@ public class InventoryService {
 			throw new BusinessRuleException("La quantità in ingresso deve essere almeno 1");
 		}
 		stock.receive(productId, quantity);
-		stock.record(StockMovement.of(productId, MovementType.RECEIPT, quantity, null, null, note, actor));
+		stock.recordMovement(StockMovement.of(productId, MovementType.RECEIPT, quantity, null, null, note, actor));
 		return get(productId);
 	}
 
@@ -89,7 +89,7 @@ public class InventoryService {
 			throw new BusinessRuleException(
 					"La rettifica porterebbe la giacenza sotto la quantità già riservata agli ordini");
 		}
-		stock.record(StockMovement.of(productId, MovementType.ADJUSTMENT, delta, null, null, note, actor));
+		stock.recordMovement(StockMovement.of(productId, MovementType.ADJUSTMENT, delta, null, null, note, actor));
 		StockLevel level = find(productId);
 		announceIfBecameLow(level, level.available() - delta);
 		return StockView.of(level);
@@ -118,7 +118,7 @@ public class InventoryService {
 			throw new ConflictException("Giacenza insufficiente per %s: richiesti %d, disponibili %d"
 				.formatted(level.sku(), quantity, level.available()));
 		}
-		stock.record(StockMovement.of(productId, MovementType.RESERVATION, quantity, StockMovement.REFERENCE_ORDER,
+		stock.recordMovement(StockMovement.of(productId, MovementType.RESERVATION, quantity, StockMovement.REFERENCE_ORDER,
 				orderId, null, actor));
 		StockLevel level = find(productId);
 		announceIfBecameLow(level, level.available() + quantity);
@@ -129,7 +129,7 @@ public class InventoryService {
 		if (!stock.release(productId, quantity)) {
 			throw new IllegalStateException("Riserva incoerente per il prodotto " + productId + " (ordine " + orderId + ")");
 		}
-		stock.record(StockMovement.of(productId, MovementType.RELEASE, quantity, StockMovement.REFERENCE_ORDER,
+		stock.recordMovement(StockMovement.of(productId, MovementType.RELEASE, quantity, StockMovement.REFERENCE_ORDER,
 				orderId, null, actor));
 	}
 
@@ -138,7 +138,7 @@ public class InventoryService {
 		if (!stock.ship(productId, quantity)) {
 			throw new IllegalStateException("Spedizione incoerente per il prodotto " + productId + " (ordine " + orderId + ")");
 		}
-		stock.record(StockMovement.of(productId, MovementType.SHIPMENT, quantity, StockMovement.REFERENCE_ORDER,
+		stock.recordMovement(StockMovement.of(productId, MovementType.SHIPMENT, quantity, StockMovement.REFERENCE_ORDER,
 				orderId, null, actor));
 	}
 

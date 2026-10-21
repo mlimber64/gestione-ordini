@@ -166,9 +166,9 @@ class NotificationFlowIntegrationTest {
 			consumer.subscribe(List.of(ORDER_CREATED + ".DLT"));
 			long deadline = System.nanoTime() + Duration.ofSeconds(20).toNanos();
 			while (dead.isEmpty() && System.nanoTime() < deadline) {
-				for (ConsumerRecord<String, String> record : consumer.poll(Duration.ofMillis(300))) {
-					if (poison.equals(record.value())) {
-						dead.add(record.value());
+				for (ConsumerRecord<String, String> message : consumer.poll(Duration.ofMillis(300))) {
+					if (poison.equals(message.value())) {
+						dead.add(message.value());
 					}
 				}
 			}

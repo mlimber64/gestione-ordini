@@ -49,9 +49,9 @@ class EventConsumer {
 	}
 
 	@KafkaListener(topics = { "orders.order-created.v1", "orders.order-status-changed.v1", "inventory.stock-low.v1" })
-	void on(ConsumerRecord<String, String> record) {
+	void on(ConsumerRecord<String, String> message) {
 		try {
-			factory.create(record.topic(), record.value()).ifPresent(notification -> {
+			factory.create(message.topic(), message.value()).ifPresent(notification -> {
 				var saved = store.insertIfAbsent(notification).block(TIMEOUT);
 				if (saved == null) {
 					duplicates.increment();
@@ -63,7 +63,7 @@ class EventConsumer {
 			});
 		}
 		catch (RuntimeException ex) {
-			log.warn("Elaborazione fallita per {}-{}@{}: {}", record.topic(), record.partition(), record.offset(),
+			log.warn("Elaborazione fallita per {}-{}@{}: {}", message.topic(), message.partition(), message.offset(),
 					ex.toString(), ex);
 			throw ex;
 		}

@@ -66,19 +66,19 @@ export class NotificationService {
     }
   }
 
-  private async connectLoop(): Promise<void> {
-    let attempt = 0;
-    while (this.running) {
-      try {
-        await this.readStream();
-        attempt = 0;
-      } catch {
-        attempt++;
-      }
-      this.connected.set(false);
-      if (!this.running) return;
-      await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * 2 ** attempt, 15000)));
+  /** Lee lo stream; al terminar (o fallire) pianifica il tentativo successivo con attesa crescente. */
+  private async connectLoop(attempt = 0): Promise<void> {
+    if (!this.running) return;
+    let next = 0;
+    try {
+      await this.readStream();
+    } catch {
+      next = attempt + 1;
     }
+    this.connected.set(false);
+    if (!this.running) return;
+    const delay = Math.min(1000 * 2 ** next, 15000);
+    setTimeout(() => void this.connectLoop(next), delay);
   }
 
   private async readStream(): Promise<void> {

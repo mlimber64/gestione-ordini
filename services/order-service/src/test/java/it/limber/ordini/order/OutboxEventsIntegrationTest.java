@@ -85,9 +85,9 @@ class OutboxEventsIntegrationTest extends ApiTestSupport {
 			consumer.subscribe(List.of(topic));
 			long deadline = System.nanoTime() + Duration.ofSeconds(20).toNanos();
 			while (found.size() < expected && System.nanoTime() < deadline) {
-				consumer.poll(Duration.ofMillis(300)).forEach(record -> {
-					if (match.test(record)) {
-						found.add(record);
+				consumer.poll(Duration.ofMillis(300)).forEach(message -> {
+					if (match.test(message)) {
+						found.add(message);
 					}
 				});
 			}
@@ -95,8 +95,8 @@ class OutboxEventsIntegrationTest extends ApiTestSupport {
 		return found;
 	}
 
-	private static String header(ConsumerRecord<String, String> record, String name) {
-		Header header = record.headers().lastHeader(name);
+	private static String header(ConsumerRecord<String, String> message, String name) {
+		Header header = message.headers().lastHeader(name);
 		return header == null ? null : new String(header.value(), StandardCharsets.UTF_8);
 	}
 
@@ -110,18 +110,18 @@ class OutboxEventsIntegrationTest extends ApiTestSupport {
 		List<ConsumerRecord<String, String>> records = await(ORDER_CREATED, r -> orderId.equals(r.key()), 1);
 
 		assertThat(records).hasSize(1);
-		ConsumerRecord<String, String> record = records.getFirst();
-		assertThat(JsonPath.<String>read(record.value(), "$.eventType")).isEqualTo("OrderCreated");
-		assertThat(JsonPath.<String>read(record.value(), "$.eventId")).isEqualTo(header(record, "event-id"));
-		assertThat(header(record, "event-type")).isEqualTo("OrderCreated");
-		assertThat(JsonPath.<String>read(record.value(), "$.data.orderId")).isEqualTo(orderId);
-		assertThat(JsonPath.<String>read(record.value(), "$.data.customerId")).isEqualTo(customerId);
-		assertThat(JsonPath.<Integer>read(record.value(), "$.data.lineCount")).isEqualTo(1);
-		assertThat(JsonPath.<Number>read(record.value(), "$.data.totalGross").doubleValue()).isEqualTo(36.60);
-		assertThat(JsonPath.<String>read(record.value(), "$.occurredAt")).isNotBlank();
+		ConsumerRecord<String, String> message = records.getFirst();
+		assertThat(JsonPath.<String>read(message.value(), "$.eventType")).isEqualTo("OrderCreated");
+		assertThat(JsonPath.<String>read(message.value(), "$.eventId")).isEqualTo(header(message, "event-id"));
+		assertThat(header(message, "event-type")).isEqualTo("OrderCreated");
+		assertThat(JsonPath.<String>read(message.value(), "$.data.orderId")).isEqualTo(orderId);
+		assertThat(JsonPath.<String>read(message.value(), "$.data.customerId")).isEqualTo(customerId);
+		assertThat(JsonPath.<Integer>read(message.value(), "$.data.lineCount")).isEqualTo(1);
+		assertThat(JsonPath.<Number>read(message.value(), "$.data.totalGross").doubleValue()).isEqualTo(36.60);
+		assertThat(JsonPath.<String>read(message.value(), "$.occurredAt")).isNotBlank();
 
 		// Una volta confermato da Kafka, l'evento risulta pubblicato nel database
-		String eventId = header(record, "event-id");
+		String eventId = header(message, "event-id");
 		assertThat(jdbc.sql("SELECT published_at IS NOT NULL FROM orders.outbox_event WHERE id = :id")
 			.param("id", UUID.fromString(eventId))
 			.query(Boolean.class)

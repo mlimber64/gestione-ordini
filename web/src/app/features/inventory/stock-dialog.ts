@@ -28,6 +28,13 @@ const TEXT: Record<StockAction, { title: string; field: string; hint: string }> 
   reorder: { title: 'Soglia di riordino', field: 'Soglia', hint: 'Sotto questo disponibile parte l’avviso di scorta bassa. 0 la disattiva.' },
 };
 
+/** Valore minimo ammesso: un carico è almeno 1, la soglia almeno 0, una rettifica può togliere fino a un milione. */
+function minimumFor(action: StockAction): number {
+  if (action === 'receive') return 1;
+  if (action === 'reorder') return 0;
+  return -1_000_000;
+}
+
 /** Una sola finestra per le tre operazioni sulla giacenza di un prodotto. */
 @Component({
   selector: 'app-stock-dialog',
@@ -78,7 +85,7 @@ export class StockDialog {
   protected readonly form = inject(FormBuilder).nonNullable.group({
     value: [
       this.data.action === 'reorder' ? this.data.stock.reorderLevel : 0,
-      [Validators.required, this.data.action === 'receive' ? Validators.min(1) : Validators.min(this.data.action === 'reorder' ? 0 : -1_000_000), Validators.max(1_000_000)],
+      [Validators.required, Validators.min(minimumFor(this.data.action)), Validators.max(1_000_000)],
     ],
     note: ['', this.data.action === 'adjust' ? [Validators.required, Validators.maxLength(300)] : Validators.maxLength(300)],
   });

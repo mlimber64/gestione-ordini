@@ -98,6 +98,7 @@ public class Customer {
 		addresses.remove(address);
 	}
 
+	@SuppressWarnings("java:S107") // riflette i campi dell'indirizzo, già raccolti in AddressCommand a livello di servizio
 	public void updateAddress(Address address, AddressType type, String street, String city, String province,
 			String postalCode, String country, boolean defaultAddress) {
 		address.update(type, street, city, province, postalCode, country, defaultAddress);
