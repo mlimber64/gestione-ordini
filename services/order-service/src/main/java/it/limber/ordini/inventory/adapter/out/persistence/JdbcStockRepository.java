@@ -152,7 +152,7 @@ class JdbcStockRepository implements StockRepository {
 	}
 
 	@Override
-	public void record(StockMovement movement) {
+	public void recordMovement(StockMovement movement) {
 		jdbc.sql("""
 				INSERT INTO orders.stock_movement
 				    (product_id, type, quantity, reference_type, reference_id, note, created_by)

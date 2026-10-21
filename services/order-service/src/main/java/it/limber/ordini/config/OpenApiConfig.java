@@ -20,7 +20,7 @@ class OpenApiConfig {
 				.version("v1")
 				.description("API REST per utenti, clienti, catalogo, magazzino e ordini."))
 			.components(new Components().addSecuritySchemes(BEARER,
-					new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")))
+					new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme(BEARER).bearerFormat("JWT")))
 			.addSecurityItem(new SecurityRequirement().addList(BEARER));
 	}
 

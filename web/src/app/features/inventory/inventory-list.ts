@@ -162,13 +162,7 @@ export class InventoryList implements OnInit {
       .afterClosed()
       .subscribe((result) => {
         if (!result) return;
-        const request: Observable<Stock> =
-          action === 'receive'
-            ? this.api.receive(stock.productId, result.value, result.note || null)
-            : action === 'adjust'
-              ? this.api.adjust(stock.productId, result.value, result.note)
-              : this.api.setReorderLevel(stock.productId, result.value);
-        request.subscribe({
+        this.request(action, stock, result).subscribe({
           next: () => {
             this.snackBar.open('Giacenza aggiornata');
             this.reload(this.page());
@@ -176,6 +170,17 @@ export class InventoryList implements OnInit {
           error: (error: unknown) => this.snackBar.open(errorMessage(error), 'Chiudi', { duration: 8000 }),
         });
       });
+  }
+
+  private request(action: StockAction, stock: Stock, result: StockDialogResult): Observable<Stock> {
+    switch (action) {
+      case 'receive':
+        return this.api.receive(stock.productId, result.value, result.note || null);
+      case 'adjust':
+        return this.api.adjust(stock.productId, result.value, result.note);
+      case 'reorder':
+        return this.api.setReorderLevel(stock.productId, result.value);
+    }
   }
 
   protected movements(stock: Stock): void {

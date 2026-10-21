@@ -51,6 +51,7 @@ public class Address {
 	protected Address() {
 	}
 
+	@SuppressWarnings("java:S107") // inizializza tutti i campi dell'indirizzo: raggrupparli in un oggetto aggiungerebbe solo un livello
 	Address(Customer customer, AddressType type, String street, String city, String province, String postalCode,
 			String country, boolean defaultAddress) {
 		this.customer = customer;

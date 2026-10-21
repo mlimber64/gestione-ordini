@@ -33,7 +33,7 @@ public interface StockRepository {
 
 	void setReorderLevel(UUID productId, int reorderLevel);
 
-	void record(StockMovement movement);
+	void recordMovement(StockMovement movement);
 
 	Page<StockMovement> movements(UUID productId, Pageable pageable);
 

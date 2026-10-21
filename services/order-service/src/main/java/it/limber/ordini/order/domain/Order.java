@@ -46,6 +46,8 @@ public final class Order {
 
 	private Instant updatedAt;
 
+	// Le firme lunghe qui sotto servono a costruire e ricostruire l'aggregato con tutti i suoi campi immutabili
+	@SuppressWarnings("java:S107")
 	private Order(UUID id, String number, UUID customerId, String customerCode, String customerName,
 			ShippingAddress shippingAddress, String notes, List<OrderLine> lines, String createdBy, Instant createdAt,
 			OrderStatus status, Instant updatedAt, List<StatusChange> history) {
@@ -65,6 +67,7 @@ public final class Order {
 	}
 
 	/** Crea un ordine nuovo, in attesa. */
+	@SuppressWarnings("java:S107")
 	public static Order place(UUID id, String number, UUID customerId, String customerCode, String customerName,
 			ShippingAddress shippingAddress, String notes, List<OrderLine> lines, String actor, Instant now) {
 		if (lines == null || lines.isEmpty()) {
@@ -87,6 +90,7 @@ public final class Order {
 	}
 
 	/** Ricostruisce un ordine già salvato. */
+	@SuppressWarnings("java:S107")
 	public static Order restore(UUID id, String number, UUID customerId, String customerCode, String customerName,
 			ShippingAddress shippingAddress, String notes, List<OrderLine> lines, String createdBy, Instant createdAt,
 			OrderStatus status, Instant updatedAt, List<StatusChange> history) {

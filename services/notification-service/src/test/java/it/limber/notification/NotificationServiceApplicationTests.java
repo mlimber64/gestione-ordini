@@ -12,6 +12,7 @@ class NotificationServiceApplicationTests {
 
 	@Test
 	void contextLoads() {
+		// Il test è l'avvio stesso: se il contesto o una migrazione Flyway non funzionano, fallisce prima di arrivare qui
 	}
 
 }

@@ -12,6 +12,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.time.Year;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -20,6 +21,9 @@ import java.util.UUID;
 
 @Repository
 class JpaOrderRepository implements OrderRepository {
+
+	/** L'anno del numero d'ordine segue l'ora italiana, non quella del server. */
+	private static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Rome");
 
 	private final SpringDataOrderRepository jpa;
 
@@ -34,7 +38,7 @@ class JpaOrderRepository implements OrderRepository {
 	public String nextNumber() {
 		Number next = (Number) entityManager.createNativeQuery("SELECT nextval('orders.order_number_seq')")
 			.getSingleResult();
-		return "ORD-%d-%06d".formatted(Year.now().getValue(), next.longValue());
+		return "ORD-%d-%06d".formatted(Year.now(BUSINESS_ZONE).getValue(), next.longValue());
 	}
 
 	/**

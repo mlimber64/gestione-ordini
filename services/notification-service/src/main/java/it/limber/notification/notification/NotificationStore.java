@@ -14,8 +14,11 @@ import java.util.UUID;
 @Repository
 public class NotificationStore {
 
-	private static final String COLUMNS = """
-			id, event_id, event_type, aggregate_id, severity, title, message, data::text AS data, occurred_at, received_at""";
+	private static final String COLUMNS = "id, event_id, event_type, aggregate_id, severity, title, message, data::text AS data, occurred_at, received_at";
+
+	private static final String SELECT_ALL = "SELECT " + COLUMNS + " FROM notifications.notification_event";
+
+	private static final String LIMIT = "limit";
 
 	private final DatabaseClient db;
 
@@ -55,23 +58,23 @@ public class NotificationStore {
 	/** Le notifiche più recenti, dalla più nuova; con {@code beforeId} si scorre indietro nella cronologia. */
 	public Flux<Notification> findRecent(int limit, Long beforeId) {
 		if (beforeId == null) {
-			return db.sql("SELECT " + COLUMNS + " FROM notifications.notification_event ORDER BY id DESC LIMIT :limit")
-				.bind("limit", limit)
+			return db.sql(SELECT_ALL + " ORDER BY id DESC LIMIT :limit")
+				.bind(LIMIT, limit)
 				.map(this::map)
 				.all();
 		}
-		return db.sql("SELECT " + COLUMNS + " FROM notifications.notification_event WHERE id < :before ORDER BY id DESC LIMIT :limit")
+		return db.sql(SELECT_ALL + " WHERE id < :before ORDER BY id DESC LIMIT :limit")
 			.bind("before", beforeId)
-			.bind("limit", limit)
+			.bind(LIMIT, limit)
 			.map(this::map)
 			.all();
 	}
 
 	/** Le notifiche arrivate dopo {@code id}, dalla più vecchia: serve a riprendere uno stream interrotto. */
 	public Flux<Notification> findAfter(long id, int limit) {
-		return db.sql("SELECT " + COLUMNS + " FROM notifications.notification_event WHERE id > :id ORDER BY id LIMIT :limit")
+		return db.sql(SELECT_ALL + " WHERE id > :id ORDER BY id LIMIT :limit")
 			.bind("id", id)
-			.bind("limit", limit)
+			.bind(LIMIT, limit)
 			.map(this::map)
 			.all();
 	}

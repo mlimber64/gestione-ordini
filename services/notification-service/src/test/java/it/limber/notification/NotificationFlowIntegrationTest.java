@@ -166,9 +166,9 @@ class NotificationFlowIntegrationTest {
 			consumer.subscribe(List.of(ORDER_CREATED + ".DLT"));
 			long deadline = System.nanoTime() + Duration.ofSeconds(20).toNanos();
 			while (dead.isEmpty() && System.nanoTime() < deadline) {
-				for (ConsumerRecord<String, String> record : consumer.poll(Duration.ofMillis(300))) {
-					if (poison.equals(record.value())) {
-						dead.add(record.value());
+				for (ConsumerRecord<String, String> message : consumer.poll(Duration.ofMillis(300))) {
+					if (poison.equals(message.value())) {
+						dead.add(message.value());
 					}
 				}
 			}
@@ -190,6 +190,30 @@ class NotificationFlowIntegrationTest {
 		assertThat(n.title()).isEqualTo("Scorta bassa: PEN-01");
 	}
 
+	@Test
+	void la_cronologia_si_scorre_all_indietro_con_before_id() {
+		String orderId = UUID.randomUUID().toString();
+		for (String number : List.of("ORD-P1", "ORD-P2", "ORD-P3")) {
+			kafka.send(ORDER_CREATED, orderId, orderCreated(UUID.randomUUID(), orderId, number));
+		}
+		List<Notification> found = awaitNotifications(orderId, 3);
+		long newest = found.stream().mapToLong(Notification::id).max().orElseThrow();
+
+		List<Notification> older = client().get()
+			.uri("/api/v1/notifications?limit=200&beforeId=" + newest)
+			.headers(h -> h.setBearerAuth(access()))
+			.exchange()
+			.expectStatus()
+			.isOk()
+			.expectBodyList(Notification.class)
+			.returnResult()
+			.getResponseBody();
+
+		assertThat(older).extracting(Notification::id).doesNotContain(newest);
+		assertThat(older).filteredOn(n -> orderId.equals(n.aggregateId())).hasSize(2);
+		// Dalla più recente alla più vecchia
+		assertThat(older).extracting(Notification::id).isSortedAccordingTo(java.util.Comparator.reverseOrder());
+	}
 	@Test
 	void lo_stream_sse_consegna_in_diretta_le_nuove_notifiche() throws Exception {
 		CompletableFuture<ServerSentEvent<Notification>> first = client().get()
