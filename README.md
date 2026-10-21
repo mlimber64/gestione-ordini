@@ -4,7 +4,7 @@
 
 Sistema di gestione degli ordini con architettura a microservizi: catalogo, magazzino e ordini con riserva atomica delle giacenze, eventi su Apache Kafka e notifiche in tempo reale.
 
-Progetto di portafoglio, sviluppato in modo incrementale con milestone, pull request e decisioni documentate. **Stato: in sviluppo (M4 completata: notifiche in tempo reale).**
+Progetto di portafoglio, sviluppato in modo incrementale con milestone, pull request e decisioni documentate. **Stato: in sviluppo (M5 completata: applicazione web).**
 
 ## Stack
 
@@ -12,7 +12,7 @@ Progetto di portafoglio, sviluppato in modo incrementale con milestone, pull req
 |---|---|
 | Backend principale | Java 25, Spring Boot 4.1, Spring MVC con thread virtuali, JPA, Flyway |
 | Backend reattivo | Spring WebFlux, R2DBC, Project Reactor |
-| Frontend | Angular 22, TypeScript 6, Angular Material |
+| Frontend | Angular 22, TypeScript 6, Angular Material (tema sobrio), signals |
 | Database | PostgreSQL 18 |
 | Messaggistica | Apache Kafka 4 (KRaft) con pattern transactional outbox |
 | Sicurezza | Spring Security, JWT |
@@ -63,6 +63,10 @@ cd web && npm ci && npm start                                # http://localhost:
 | web (sviluppo) | 4200 |
 
 I test di integrazione usano Testcontainers: richiedono solo Docker in esecuzione.
+
+### Applicazione web
+
+Con i due servizi e l'infrastruttura avviati, `npm start` apre l'applicazione su `http://localhost:4200` ed entra con `admin` / `admin-dev-1234` (solo sviluppo). Un proxy di sviluppo instrada `/api` verso i servizi, quindi non serve configurare CORS. Schermate: cruscotto, ordini (creazione con riserva della merce e storico), clienti con indirizzi, prodotti e categorie, magazzino (carico, rettifica, soglia, movimenti) e notifiche in tempo reale. Decisioni in [ADR 0013](docs/adr/0013-frontend-angular-material.md).
 
 ### order-service in locale
 
@@ -145,7 +149,7 @@ docs/adr/                 Architecture Decision Record
 - [x] **M2** Magazzino e ordini: riserva atomica, macchina a stati
 - [x] **M3** Eventi: outbox e topic Kafka
 - [x] **M4** Notifiche: servizio WebFlux e stream SSE
-- [ ] **M5** Applicazione Angular
+- [x] **M5** Applicazione Angular
 - [ ] **M6** Qualità e rilascio v1.0
 
 ## Autore
