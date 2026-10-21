@@ -1,0 +1,14 @@
+management:
+  prometheus:
+    metrics:
+      export:
+        # Spring Boot disattiva l'esportazione delle metriche nei test: la riattiviamo per verificare l'endpoint
+        enabled: true
+
+app:
+  security:
+    jwt:
+      secret: test-only-secret-0123456789abcdef-0123456789
+    bootstrap-admin:
+      username: admin
+      password: test-admin-1234

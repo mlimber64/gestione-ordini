@@ -4,7 +4,7 @@
 
 Sistema di gestione degli ordini con architettura a microservizi: catalogo, magazzino e ordini con riserva atomica delle giacenze, eventi su Apache Kafka e notifiche in tempo reale.
 
-Progetto di portafoglio, sviluppato in modo incrementale con milestone, pull request e decisioni documentate. **Stato: in sviluppo (M0, fondamenta).**
+Progetto di portafoglio, sviluppato in modo incrementale con milestone, pull request e decisioni documentate. **Stato: in sviluppo (M1 completata: identità e catalogo).**
 
 ## Stack
 
@@ -64,6 +64,29 @@ cd web && npm ci && npm start                                # http://localhost:
 
 I test di integrazione usano Testcontainers: richiedono solo Docker in esecuzione.
 
+### order-service in locale
+
+Con il profilo `dev` (predefinito in locale) il servizio crea all'avvio l'utente `admin` con la password `admin-dev-1234`. Sono valori **solo per lo sviluppo**: in un ambiente reale vanno impostate le variabili qui sotto.
+
+- API: `http://localhost:8081/api/v1`
+- Documentazione interattiva: `http://localhost:8081/swagger-ui.html`
+- Contratto OpenAPI: `http://localhost:8081/v3/api-docs`
+
+```bash
+# Login: restituisce accessToken e refreshToken
+curl -X POST http://localhost:8081/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin-dev-1234"}'
+```
+
+| Variabile | Significato | Obbligatoria fuori da `dev` |
+|---|---|---|
+| `SPRING_PROFILES_ACTIVE` | Profilo attivo | sì |
+| `JWT_SECRET` | Segreto di firma dei JWT, almeno 32 byte | sì |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Amministratore creato al primo avvio | `ADMIN_PASSWORD` sì |
+| `DB_URL`, `DB_USER`, `DB_PASSWORD` | Connessione a PostgreSQL | no |
+| `KAFKA_BOOTSTRAP_SERVERS` | Indirizzo di Kafka | no |
+
 ## Struttura
 
 ```
@@ -79,7 +102,7 @@ docs/adr/                 Architecture Decision Record
 ## Roadmap
 
 - [x] **M0** Fondamenta: struttura, Compose, CI, ADR
-- [ ] **M1** Identità e catalogo: login JWT, clienti, prodotti
+- [x] **M1** Identità e catalogo: login JWT con ruoli, clienti e indirizzi, categorie, prodotti
 - [ ] **M2** Magazzino e ordini: riserva atomica, macchina a stati
 - [ ] **M3** Eventi: outbox e topic Kafka
 - [ ] **M4** Notifiche: servizio WebFlux e stream SSE
