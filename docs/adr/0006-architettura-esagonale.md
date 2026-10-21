@@ -15,7 +15,7 @@ Le dipendenze vanno sempre verso il dominio. La regola è verificata con ArchUni
 
 Per pragmatismo:
 - **Ordini e magazzino** hanno un dominio ricco, separato dalle entità JPA.
-- **Clienti, categorie e prodotti** sono CRUD semplici e usano direttamente l'entità JPA nell'adattatore.
+- **Clienti, categorie e prodotti** sono CRUD semplici: l'entità JPA e il repository stanno nel pacchetto `domain` e non c'è un secondo modello da mappare. I servizi in `application` restituiscono viste di sola lettura (record), così le entità non escono mai dal livello applicativo.
 
 **notification-service** ha una struttura più semplice, perché non ha un dominio proprio.
 
