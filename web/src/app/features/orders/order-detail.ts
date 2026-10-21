@@ -51,7 +51,7 @@ const STEP_LABEL: Record<Step, { text: string; icon: string }> = {
           }
         </div>
 
-        <div class="info">
+        <div class="summary">
           <div class="card">
             <h2>Cliente</h2>
             <a [routerLink]="['/clienti', o.customerId]">{{ o.customerName }}</a>
@@ -128,13 +128,13 @@ const STEP_LABEL: Record<Step, { text: string; icon: string }> = {
     </div>
   `,
   styles: `
-    .info {
+    .summary {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 12px;
       margin-bottom: 12px;
     }
-    .info .card {
+    .summary .card {
       display: flex;
       flex-direction: column;
       gap: 2px;
