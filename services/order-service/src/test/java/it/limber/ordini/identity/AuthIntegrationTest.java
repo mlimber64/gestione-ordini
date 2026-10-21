@@ -138,11 +138,12 @@ class AuthIntegrationTest extends ApiTestSupport {
 	}
 
 	@Test
-	void l_health_e_pubblico_ma_le_metriche_richiedono_l_amministratore() throws Exception {
+	void salute_e_metriche_sono_aperte_per_prometheus_ma_gli_altri_endpoint_di_gestione_no() throws Exception {
 		mvc.perform(get("/actuator/health")).andExpect(status().isOk());
-		mvc.perform(get("/actuator/prometheus")).andExpect(status().isUnauthorized());
-		getJson("/actuator/prometheus", tokenFor(Role.OPERATOR)).andExpect(status().isForbidden());
-		getJson("/actuator/prometheus", adminToken()).andExpect(status().isOk());
+		mvc.perform(get("/actuator/prometheus")).andExpect(status().isOk());
+		// Qualunque altro endpoint di gestione resta riservato all'amministratore
+		mvc.perform(get("/actuator/env")).andExpect(status().isUnauthorized());
+		getJson("/actuator/env", tokenFor(Role.OPERATOR)).andExpect(status().isForbidden());
 	}
 
 }

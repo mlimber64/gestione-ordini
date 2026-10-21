@@ -267,11 +267,13 @@ class NotificationFlowIntegrationTest {
 	}
 
 	@Test
-	void la_salute_e_pubblica_ma_le_metriche_no() {
+	void salute_e_metriche_sono_aperte_per_prometheus_ma_gli_altri_endpoint_di_gestione_no() {
 		client().get().uri("/actuator/health").exchange().expectStatus().isOk();
-		client().get().uri("/actuator/prometheus").exchange().expectStatus().isUnauthorized();
+		client().get().uri("/actuator/prometheus").exchange().expectStatus().isOk();
+		// Qualunque altro endpoint di gestione richiede l'amministratore: un utente normale riceve 403
+		client().get().uri("/actuator/env").exchange().expectStatus().isUnauthorized();
 		client().get()
-			.uri("/actuator/prometheus")
+			.uri("/actuator/env")
 			.headers(h -> h.setBearerAuth(access()))
 			.exchange()
 			.expectStatus()

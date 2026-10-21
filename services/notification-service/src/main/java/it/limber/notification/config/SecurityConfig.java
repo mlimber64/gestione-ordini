@@ -53,7 +53,7 @@ class SecurityConfig {
 		converter.setJwtGrantedAuthoritiesConverter(authorities);
 
 		return http.csrf(ServerHttpSecurity.CsrfSpec::disable)
-			.authorizeExchange(exchanges -> exchanges.pathMatchers("/actuator/health/**", "/actuator/info")
+			.authorizeExchange(exchanges -> exchanges.pathMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus")
 				.permitAll()
 				.pathMatchers("/actuator/**")
 				.hasRole("ADMIN")

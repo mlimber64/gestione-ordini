@@ -39,7 +39,9 @@ class SecurityConfig {
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(requests -> requests
 				.requestMatchers("/api/v1/auth/**").permitAll()
-				.requestMatchers(HttpMethod.GET, "/actuator/health/**", "/actuator/info").permitAll()
+				// Le metriche non contengono dati sensibili e servono a Prometheus, che non ha un token. Non sono raggiungibili
+				// da fuori: il reverse proxy inoltra solo /api e le porte dei servizi non sono pubblicate (ADR 0014).
+				.requestMatchers(HttpMethod.GET, "/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
 				.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 				.requestMatchers("/actuator/**").hasRole("ADMIN")
 				.anyRequest().authenticated())
