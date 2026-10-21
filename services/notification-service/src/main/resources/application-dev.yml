@@ -1,0 +1,5 @@
+# Solo per lo sviluppo locale: è lo stesso segreto di order-service, così i suoi token valgono anche qui.
+app:
+  security:
+    jwt:
+      secret: dev-only-secret-change-me-0123456789abcdef
