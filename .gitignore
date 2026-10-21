@@ -1,0 +1,14 @@
+# Ambiente locale
+.env
+*.local
+
+# IDE e sistema operativo
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Log
+*.log
