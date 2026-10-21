@@ -1,6 +1,9 @@
 spring:
   application:
     name: notification-service
+  # In locale si usa il profilo dev. In produzione impostare SPRING_PROFILES_ACTIVE e JWT_SECRET (lo stesso di order-service).
+  profiles:
+    default: dev
   r2dbc:
     url: ${R2DBC_URL:r2dbc:postgresql://localhost:15432/gestione_ordini?options=search_path%3Dnotifications}
     username: ${DB_USER:ordini}
@@ -15,6 +18,28 @@ spring:
     create-schemas: true
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    consumer:
+      group-id: notification-service
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      # Il producer serve solo per inviare ai topic *.DLT i messaggi che non si riescono a elaborare
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    listener:
+      concurrency: 3
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:}
+      issuer: gestione-ordini
+  notifications:
+    heartbeat: 25s
+    replay-limit: 500
 
 server:
   port: ${SERVER_PORT:8082}
