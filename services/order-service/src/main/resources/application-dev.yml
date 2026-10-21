@@ -1,0 +1,7 @@
+# Valori SOLO per lo sviluppo locale. Non usarli mai in un ambiente reale.
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}
+    bootstrap-admin:
+      password: ${ADMIN_PASSWORD:admin-dev-1234}
