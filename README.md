@@ -4,7 +4,7 @@
 
 Sistema di gestione degli ordini con architettura a microservizi: catalogo, magazzino e ordini con riserva atomica delle giacenze, eventi su Apache Kafka e notifiche in tempo reale.
 
-Progetto di portafoglio, sviluppato in modo incrementale con milestone, pull request e decisioni documentate. **Stato: in sviluppo (M3 completata: eventi con outbox e Kafka).**
+Progetto di portafoglio, sviluppato in modo incrementale con milestone, pull request e decisioni documentate. **Stato: in sviluppo (M4 completata: notifiche in tempo reale).**
 
 ## Stack
 
@@ -110,7 +110,21 @@ Ogni cambiamento viene annunciato su Kafka con il pattern transactional outbox (
 | `orders.order-status-changed.v1` | cambio di stato (con stato precedente, nuovo e motivo) |
 | `inventory.stock-low.v1` | prodotto sceso alla soglia di riordino |
 
-Per vederli: `docker exec gestione-ordini-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic orders.order-created.v1 --from-beginning`
+### Notifiche in tempo reale
+
+`notification-service` consuma gli eventi (scartando i duplicati) e li espone in italiano. Serve un token di accesso di order-service (in locale `admin` / `admin-dev-1234`, stesso `JWT_SECRET`) ([ADR 0012](docs/adr/0012-notifiche-sse-e-consumer-idempotente.md)).
+
+```bash
+# Stream in diretta (SSE); con Last-Event-ID si riprende da dove ci si era fermati
+curl -N -H "Authorization: Bearer $TOKEN" http://localhost:8082/api/v1/notifications/stream
+
+# Cronologia, dalla più recente
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8082/api/v1/notifications?limit=20"
+```
+
+I messaggi che non si riescono a elaborare finiscono nei topic `*.DLT` senza bloccare gli altri.
+
+Per vedere gli eventi grezzi: `docker exec gestione-ordini-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic orders.order-created.v1 --from-beginning`
 
 ## Struttura
 
@@ -130,7 +144,7 @@ docs/adr/                 Architecture Decision Record
 - [x] **M1** Identità e catalogo: login JWT con ruoli, clienti e indirizzi, categorie, prodotti
 - [x] **M2** Magazzino e ordini: riserva atomica, macchina a stati
 - [x] **M3** Eventi: outbox e topic Kafka
-- [ ] **M4** Notifiche: servizio WebFlux e stream SSE
+- [x] **M4** Notifiche: servizio WebFlux e stream SSE
 - [ ] **M5** Applicazione Angular
 - [ ] **M6** Qualità e rilascio v1.0
 
