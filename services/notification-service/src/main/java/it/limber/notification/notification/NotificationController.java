@@ -68,7 +68,9 @@ class NotificationController {
 			.event(n.eventType())
 			.data(n)
 			.build());
-		Flux<ServerSentEvent<Notification>> pings = Flux.interval(heartbeat)
+		// Il primo ping parte subito: senza dati le intestazioni non verrebbero inviate e il client non saprebbe
+		// di essere collegato finché non arriva la prima notifica.
+		Flux<ServerSentEvent<Notification>> pings = Flux.interval(Duration.ZERO, heartbeat)
 			.map(tick -> ServerSentEvent.<Notification>builder().comment("ping").build());
 		return Flux.merge(events, pings);
 	}
