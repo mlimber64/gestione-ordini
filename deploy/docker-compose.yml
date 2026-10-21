@@ -1,5 +1,9 @@
 # Infrastruttura locale di Gestione Ordini.
 # Nomi di progetto, container, volumi e porte sono propri: non interferiscono con altri container presenti sulla macchina.
+#
+#   docker compose up -d                                           solo PostgreSQL e Kafka (sviluppo dei servizi sul proprio computer)
+#   docker compose --profile app up -d --build                     tutta l'applicazione: http://localhost:8080
+#   docker compose --profile app --profile observability up -d     in più Prometheus e Grafana: http://localhost:3000
 name: gestione-ordini
 
 services:
@@ -48,6 +52,94 @@ services:
       interval: 10s
       timeout: 10s
       retries: 10
+
+  # --- Applicazione (profilo "app") -------------------------------------------------------------------------------
+  # I segreti qui sotto hanno un valore predefinito SOLO per provare l'applicazione in locale.
+  # Per qualunque altro uso imposta JWT_SECRET (almeno 32 caratteri) e ADMIN_PASSWORD in deploy/.env.
+
+  order-service:
+    profiles: [app]
+    build:
+      context: ../services/order-service
+    image: gestione-ordini/order-service:local
+    container_name: gestione-ordini-order-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-gestione_ordini}
+      DB_USER: ${POSTGRES_USER:-ordini}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ordini_dev}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET:-solo-per-la-demo-locale-cambiami-0123456789}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin-demo-1234}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    restart: on-failure
+
+  notification-service:
+    profiles: [app]
+    build:
+      context: ../services/notification-service
+    image: gestione-ordini/notification-service:local
+    container_name: gestione-ordini-notification-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      R2DBC_URL: r2dbc:postgresql://postgres:5432/${POSTGRES_DB:-gestione_ordini}?options=search_path%3Dnotifications
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-gestione_ordini}
+      DB_USER: ${POSTGRES_USER:-ordini}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ordini_dev}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET:-solo-per-la-demo-locale-cambiami-0123456789}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    restart: on-failure
+
+  web:
+    profiles: [app]
+    build:
+      context: ../web
+    image: gestione-ordini/web:local
+    container_name: gestione-ordini-web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - order-service
+      - notification-service
+    restart: on-failure
+
+  # --- Osservabilità (profilo "observability", da usare insieme a "app") -----------------------------------------
+
+  prometheus:
+    profiles: [observability]
+    image: prom/prometheus:v3.15.1
+    container_name: gestione-ordini-prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+
+  grafana:
+    profiles: [observability]
+    image: grafana/grafana:13.2.4
+    container_name: gestione-ordini-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin-demo-1234}
+      # Sola lettura senza accesso per la demo; ascolta solo su localhost
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/gestione-ordini.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
 
 volumes:
   gestione_ordini_pgdata:
