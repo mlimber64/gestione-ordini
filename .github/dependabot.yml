@@ -12,6 +12,10 @@ updates:
     directory: /web
     schedule:
       interval: weekly
+    ignore:
+      # Angular 22 richiede TypeScript >=6.0 <6.1: le versioni successive non sono compatibili
+      - dependency-name: typescript
+        update-types: [version-update:semver-major, version-update:semver-minor]
   - package-ecosystem: github-actions
     directory: /
     schedule:
