@@ -74,6 +74,35 @@ public abstract class ApiTestSupport {
 		return mvc.perform(delete(url).header("Authorization", "Bearer " + token));
 	}
 
+	/** Crea una categoria e un prodotto attivo con il prezzo e l'IVA indicati; restituisce l'id del prodotto. */
+	protected String createProduct(String token, String price, String vatRate) throws Exception {
+		String categoryId = idOf(postJson("/api/v1/categories", token,
+				"{\"name\":\"%s\",\"parentId\":null}".formatted(unique("Cat"))));
+		return idOf(postJson("/api/v1/products", token, """
+				{"sku":"%s","name":"Prodotto di prova","description":null,"categoryId":"%s","unitPrice":%s,"vatRate":%s}"""
+			.formatted(unique("SKU"), categoryId, price, vatRate)));
+	}
+
+	/** Crea un cliente attivo con un indirizzo di spedizione predefinito; restituisce l'id del cliente. */
+	protected String createCustomerWithAddress(String token) throws Exception {
+		String customerId = idOf(postJson("/api/v1/customers", token, """
+				{"name":"Cliente di prova","email":"%s@example.it","phone":null,"vatNumber":null,"taxCode":null}"""
+			.formatted(unique("cliente"))));
+		postJson("/api/v1/customers/" + customerId + "/addresses", token, """
+				{"type":"SHIPPING","street":"Via Roma 1","city":"Salerno","province":"SA","postalCode":"84121","country":"IT","defaultAddress":true}""");
+		return customerId;
+	}
+
+	protected void receiveStock(String token, String productId, int quantity) throws Exception {
+		postJson("/api/v1/inventory/" + productId + "/receipts", token,
+				"{\"quantity\":%d,\"note\":\"carico di prova\"}".formatted(quantity));
+	}
+
+	protected static String orderJson(String customerId, String productId, int quantity) {
+		return """
+				{"customerId":"%s","items":[{"productId":"%s","quantity":%d}]}""".formatted(customerId, productId, quantity);
+	}
+
 	protected static String idOf(ResultActions result) throws Exception {
 		return JsonPath.read(result.andReturn().getResponse().getContentAsString(), "$.id");
 	}
