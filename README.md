@@ -4,7 +4,7 @@
 
 Sistema di gestione degli ordini con architettura a microservizi: catalogo, magazzino e ordini con riserva atomica delle giacenze, eventi su Apache Kafka e notifiche in tempo reale.
 
-Progetto di portafoglio, sviluppato in modo incrementale con milestone, pull request e decisioni documentate. **Stato: in sviluppo (M1 completata: identità e catalogo).**
+Progetto di portafoglio, sviluppato in modo incrementale con milestone, pull request e decisioni documentate. **Stato: in sviluppo (M2 completata: magazzino e ordini).**
 
 ## Stack
 
@@ -87,6 +87,19 @@ curl -X POST http://localhost:8081/api/v1/auth/login \
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Connessione a PostgreSQL | no |
 | `KAFKA_BOOTSTRAP_SERVERS` | Indirizzo di Kafka | no |
 
+### Ordini e magazzino
+
+```text
+POST /api/v1/inventory/{productId}/receipts       carico merce
+POST /api/v1/inventory/{productId}/adjustments    rettifica (anche negativa, con motivo)
+GET  /api/v1/inventory?lowStock=true              prodotti sotto scorta
+POST /api/v1/orders                               crea l'ordine e riserva la merce (409 se non basta)
+POST /api/v1/orders/{id}/confirm | ship | deliver | cancel
+GET  /api/v1/orders?status=&customerId=&from=&to= ricerca paginata
+```
+
+Il ciclo di vita è `PENDING → CONFIRMED → SHIPPED → DELIVERED`, con annullamento possibile prima della spedizione. La riserva è atomica anche con richieste simultanee: vedi [ADR 0010](docs/adr/0010-riserva-atomica-delle-giacenze.md).
+
 ## Struttura
 
 ```
@@ -103,7 +116,7 @@ docs/adr/                 Architecture Decision Record
 
 - [x] **M0** Fondamenta: struttura, Compose, CI, ADR
 - [x] **M1** Identità e catalogo: login JWT con ruoli, clienti e indirizzi, categorie, prodotti
-- [ ] **M2** Magazzino e ordini: riserva atomica, macchina a stati
+- [x] **M2** Magazzino e ordini: riserva atomica, macchina a stati
 - [ ] **M3** Eventi: outbox e topic Kafka
 - [ ] **M4** Notifiche: servizio WebFlux e stream SSE
 - [ ] **M5** Applicazione Angular

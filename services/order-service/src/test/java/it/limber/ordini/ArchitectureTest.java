@@ -1,9 +1,12 @@
 package it.limber.ordini;
 
+import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+
+import java.util.List;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
@@ -39,11 +42,31 @@ class ArchitectureTest {
 		.dependOnClassesThat()
 		.resideInAPackage("..adapter.out..");
 
+	/** Una funzionalità può usare l'application di un'altra, mai i suoi adapter. */
 	@ArchTest
-	static final ArchRule le_funzionalita_non_dipendono_dagli_adapter_delle_altre = noClasses().that()
-		.resideInAPackage("..customer..")
+	static void le_funzionalita_non_dipendono_dagli_adapter_delle_altre(JavaClasses classes) {
+		List<String> features = List.of("identity", "customer", "catalog", "inventory", "order");
+		for (String feature : features) {
+			String[] otherAdapters = features.stream()
+				.filter(other -> !other.equals(feature))
+				.map(other -> "..ordini." + other + ".adapter..")
+				.toArray(String[]::new);
+			noClasses().that()
+				.resideInAPackage("..ordini." + feature + "..")
+				.should()
+				.dependOnClassesThat()
+				.resideInAnyPackage(otherAdapters)
+				.check(classes);
+		}
+	}
+
+	/** Dove il dominio è ricco (magazzino, ordini) non conosce né JPA né JDBC: si testa senza database. */
+	@ArchTest
+	static final ArchRule il_dominio_ricco_non_conosce_la_persistenza = noClasses().that()
+		.resideInAnyPackage("..inventory.domain..", "..order.domain..")
 		.should()
 		.dependOnClassesThat()
-		.resideInAnyPackage("..catalog.adapter..", "..identity.adapter..");
+		.resideInAnyPackage("jakarta.persistence..", "org.springframework.jdbc..", "org.springframework.data.jpa..",
+				"org.hibernate..");
 
 }
