@@ -1,0 +1,17 @@
+management:
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+spring:
+  kafka:
+    listener:
+      concurrency: 1
+
+app:
+  security:
+    jwt:
+      secret: test-only-secret-0123456789abcdef-0123456789
+  notifications:
+    heartbeat: 1s
