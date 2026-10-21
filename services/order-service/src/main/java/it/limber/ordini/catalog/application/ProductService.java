@@ -76,7 +76,7 @@ public class ProductService {
 		checkVatRate(command.vatRate());
 		Product product = new Product(sku, command.name(), command.description(), category(command.categoryId()),
 				command.unitPrice(), command.vatRate());
-		return ProductView.of(products.save(product));
+		return ProductView.of(products.saveAndFlush(product));
 	}
 
 	@Transactional
