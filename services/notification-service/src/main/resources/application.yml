@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: notification-service
+  r2dbc:
+    url: ${R2DBC_URL:r2dbc:postgresql://localhost:15432/gestione_ordini?options=search_path%3Dnotifications}
+    username: ${DB_USER:ordini}
+    password: ${DB_PASSWORD:ordini_dev}
+  flyway:
+    # Flyway usa JDBC mentre l'applicazione usa R2DBC
+    url: ${DB_URL:jdbc:postgresql://localhost:15432/gestione_ordini}
+    user: ${DB_USER:ordini}
+    password: ${DB_PASSWORD:ordini_dev}
+    schemas: notifications
+    default-schema: notifications
+    create-schemas: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+
+server:
+  port: ${SERVER_PORT:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
