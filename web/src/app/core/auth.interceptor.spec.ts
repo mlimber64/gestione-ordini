@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { authInterceptor } from './auth.interceptor';
-import { fakeJwt } from './auth.service.spec';
+import { fakeJwt } from './testing';
 import { AuthService } from './auth.service';
 
 describe('authInterceptor', () => {
