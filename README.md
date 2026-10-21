@@ -4,7 +4,7 @@
 
 Sistema di gestione degli ordini con architettura a microservizi: catalogo, magazzino e ordini con riserva atomica delle giacenze, eventi su Apache Kafka e notifiche in tempo reale.
 
-Progetto di portafoglio, sviluppato in modo incrementale con milestone, pull request e decisioni documentate. **Stato: in sviluppo (M2 completata: magazzino e ordini).**
+Progetto di portafoglio, sviluppato in modo incrementale con milestone, pull request e decisioni documentate. **Stato: in sviluppo (M3 completata: eventi con outbox e Kafka).**
 
 ## Stack
 
@@ -100,6 +100,18 @@ GET  /api/v1/orders?status=&customerId=&from=&to= ricerca paginata
 
 Il ciclo di vita è `PENDING → CONFIRMED → SHIPPED → DELIVERED`, con annullamento possibile prima della spedizione. La riserva è atomica anche con richieste simultanee: vedi [ADR 0010](docs/adr/0010-riserva-atomica-delle-giacenze.md).
 
+### Eventi
+
+Ogni cambiamento viene annunciato su Kafka con il pattern transactional outbox ([ADR 0011](docs/adr/0011-outbox-e-contratto-degli-eventi.md)): l'evento si salva nella stessa transazione del cambiamento, quindi non si perde nemmeno se Kafka è spento in quel momento.
+
+| Topic | Evento |
+|---|---|
+| `orders.order-created.v1` | ordine creato |
+| `orders.order-status-changed.v1` | cambio di stato (con stato precedente, nuovo e motivo) |
+| `inventory.stock-low.v1` | prodotto sceso alla soglia di riordino |
+
+Per vederli: `docker exec gestione-ordini-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic orders.order-created.v1 --from-beginning`
+
 ## Struttura
 
 ```
@@ -117,7 +129,7 @@ docs/adr/                 Architecture Decision Record
 - [x] **M0** Fondamenta: struttura, Compose, CI, ADR
 - [x] **M1** Identità e catalogo: login JWT con ruoli, clienti e indirizzi, categorie, prodotti
 - [x] **M2** Magazzino e ordini: riserva atomica, macchina a stati
-- [ ] **M3** Eventi: outbox e topic Kafka
+- [x] **M3** Eventi: outbox e topic Kafka
 - [ ] **M4** Notifiche: servizio WebFlux e stream SSE
 - [ ] **M5** Applicazione Angular
 - [ ] **M6** Qualità e rilascio v1.0

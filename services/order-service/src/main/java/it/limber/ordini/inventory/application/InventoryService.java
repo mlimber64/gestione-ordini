@@ -7,6 +7,8 @@ import it.limber.ordini.inventory.domain.StockRepository;
 import it.limber.ordini.shared.error.BusinessRuleException;
 import it.limber.ordini.shared.error.ConflictException;
 import it.limber.ordini.shared.error.NotFoundException;
+import it.limber.ordini.shared.outbox.OutboxPublisher;
+import it.limber.ordini.shared.outbox.Topics;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,8 +42,11 @@ public class InventoryService {
 
 	private final StockRepository stock;
 
-	public InventoryService(StockRepository stock) {
+	private final OutboxPublisher outbox;
+
+	public InventoryService(StockRepository stock, OutboxPublisher outbox) {
 		this.stock = stock;
+		this.outbox = outbox;
 	}
 
 	@Transactional(readOnly = true)
@@ -85,7 +90,9 @@ public class InventoryService {
 					"La rettifica porterebbe la giacenza sotto la quantità già riservata agli ordini");
 		}
 		stock.record(StockMovement.of(productId, MovementType.ADJUSTMENT, delta, null, null, note, actor));
-		return get(productId);
+		StockLevel level = find(productId);
+		announceIfBecameLow(level, level.available() - delta);
+		return StockView.of(level);
 	}
 
 	@Transactional
@@ -113,6 +120,8 @@ public class InventoryService {
 		}
 		stock.record(StockMovement.of(productId, MovementType.RESERVATION, quantity, StockMovement.REFERENCE_ORDER,
 				orderId, null, actor));
+		StockLevel level = find(productId);
+		announceIfBecameLow(level, level.available() + quantity);
 	}
 
 	@Transactional
@@ -131,6 +140,16 @@ public class InventoryService {
 		}
 		stock.record(StockMovement.of(productId, MovementType.SHIPMENT, quantity, StockMovement.REFERENCE_ORDER,
 				orderId, null, actor));
+	}
+
+	/** Pubblica l'evento solo al passaggio da "scorta sufficiente" a "scorta bassa", non a ogni movimento. */
+	private void announceIfBecameLow(StockLevel after, int availableBefore) {
+		boolean wasLow = after.reorderLevel() > 0 && availableBefore <= after.reorderLevel();
+		if (after.lowStock() && !wasLow) {
+			outbox.publish(Topics.STOCK_LOW, "Product", after.productId().toString(), "StockLow",
+					new StockLowEvent(after.productId(), after.sku(), after.productName(), after.onHand(),
+							after.reserved(), after.available(), after.reorderLevel()));
+		}
 	}
 
 	private StockLevel find(UUID productId) {

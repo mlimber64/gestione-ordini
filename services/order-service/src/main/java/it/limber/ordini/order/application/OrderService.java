@@ -18,6 +18,8 @@ import it.limber.ordini.order.domain.ShippingAddress;
 import it.limber.ordini.order.domain.StatusChange;
 import it.limber.ordini.shared.error.BusinessRuleException;
 import it.limber.ordini.shared.error.NotFoundException;
+import it.limber.ordini.shared.outbox.OutboxPublisher;
+import it.limber.ordini.shared.outbox.Topics;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -97,12 +99,15 @@ public class OrderService {
 
 	private final InventoryService inventory;
 
+	private final OutboxPublisher outbox;
+
 	public OrderService(OrderRepository orders, CustomerService customers, ProductService products,
-			InventoryService inventory) {
+			InventoryService inventory, OutboxPublisher outbox) {
 		this.orders = orders;
 		this.customers = customers;
 		this.products = products;
 		this.inventory = inventory;
+		this.outbox = outbox;
 	}
 
 	@Transactional(readOnly = true)
@@ -130,6 +135,10 @@ public class OrderService {
 		for (OrderLine line : sortedForLocking(saved)) {
 			inventory.reserve(line.productId(), line.quantity(), saved.id(), actor);
 		}
+		outbox.publish(Topics.ORDER_CREATED, "Order", saved.id().toString(), "OrderCreated",
+				new OrderEvents.OrderCreated(saved.id(), saved.number(), saved.customerId(), saved.customerCode(),
+						saved.customerName(), saved.totalGross(), saved.lines().size(), saved.createdBy(),
+						saved.createdAt()));
 		return OrderView.of(saved);
 	}
 
@@ -137,7 +146,7 @@ public class OrderService {
 	public OrderView confirm(UUID id, String actor) {
 		Order order = find(id);
 		order.confirm(actor, Instant.now());
-		return OrderView.of(orders.save(order));
+		return OrderView.of(announce(orders.save(order)));
 	}
 
 	/** La spedizione scarica dal magazzino la merce che era solo riservata. */
@@ -149,14 +158,14 @@ public class OrderService {
 		for (OrderLine line : sortedForLocking(saved)) {
 			inventory.ship(line.productId(), line.quantity(), saved.id(), actor);
 		}
-		return OrderView.of(saved);
+		return OrderView.of(announce(saved));
 	}
 
 	@Transactional
 	public OrderView deliver(UUID id, String actor) {
 		Order order = find(id);
 		order.deliver(actor, Instant.now());
-		return OrderView.of(orders.save(order));
+		return OrderView.of(announce(orders.save(order)));
 	}
 
 	/** L'annullamento libera le quantità riservate, così tornano disponibili agli altri ordini. */
@@ -168,7 +177,17 @@ public class OrderService {
 		for (OrderLine line : sortedForLocking(saved)) {
 			inventory.release(line.productId(), line.quantity(), saved.id(), actor);
 		}
-		return OrderView.of(saved);
+		return OrderView.of(announce(saved));
+	}
+
+	/** Annuncia l'ultimo cambio di stato nella stessa transazione che lo ha salvato. */
+	private Order announce(Order saved) {
+		StatusChange change = saved.history().getLast();
+		outbox.publish(Topics.ORDER_STATUS_CHANGED, "Order", saved.id().toString(), "OrderStatusChanged",
+				new OrderEvents.OrderStatusChanged(saved.id(), saved.number(), saved.customerId(),
+						saved.customerName(), change.from(), change.to(), change.reason(), change.changedBy(),
+						change.changedAt()));
+		return saved;
 	}
 
 	private Order find(UUID id) {
