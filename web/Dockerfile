@@ -1,0 +1,12 @@
+# Immagine del frontend: build Angular e poi nginx che serve i file statici e instrada /api ai servizi.
+FROM node:24-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM nginx:1.30-alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist/web/browser /usr/share/nginx/html
+EXPOSE 80

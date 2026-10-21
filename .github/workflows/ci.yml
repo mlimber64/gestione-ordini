@@ -30,8 +30,17 @@ jobs:
           distribution: temurin
           java-version: "25"
           cache: maven
-      # I test di integrazione usano Testcontainers: Docker è già disponibile sul runner
+      # I test di integrazione usano Testcontainers: Docker è già disponibile sul runner.
+      # verify esegue anche il controllo di copertura minima (JaCoCo).
       - run: ./mvnw -B verify
+      # Classi compilate e copertura servono al job di analisi SonarCloud
+      - uses: actions/upload-artifact@v7
+        with:
+          name: backend-${{ matrix.service }}
+          path: |
+            services/${{ matrix.service }}/target/classes
+            services/${{ matrix.service }}/target/site/jacoco/jacoco.xml
+          retention-days: 1
 
   web:
     name: web
@@ -48,4 +57,53 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run build
-      - run: npm test -- --watch=false
+      - run: npm test -- --watch=false --coverage
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-coverage
+          path: web/coverage/web/lcov.info
+          retention-days: 1
+
+  # Le immagini Docker devono costruirsi: un Dockerfile rotto si scopre qui e non al momento del rilascio.
+  docker:
+    name: docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker compose -f deploy/docker-compose.yml --profile app build
+
+  # Analisi SonarCloud: parte solo se nel repository esiste il segreto SONAR_TOKEN (e non nei pull request da fork).
+  sonar:
+    name: sonarcloud
+    needs: [backend, web]
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        if: env.SONAR_TOKEN != ''
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v8
+        if: env.SONAR_TOKEN != ''
+        with:
+          pattern: backend-*
+          path: artifacts
+      - uses: actions/download-artifact@v8
+        if: env.SONAR_TOKEN != ''
+        with:
+          name: web-coverage
+          path: web/coverage/web
+      - name: Sposta i risultati dove li cerca sonar-project.properties
+        if: env.SONAR_TOKEN != ''
+        run: |
+          for service in order-service notification-service; do
+            mkdir -p "services/$service/target"
+            cp -r "artifacts/backend-$service/." "services/$service/target/"
+          done
+          # La copertura del frontend ha percorsi relativi a web/: SonarCloud li cerca dalla radice del repository
+          sed -i 's#^SF:src/#SF:web/src/#' web/coverage/web/lcov.info
+      - uses: SonarSource/sonarqube-scan-action@v8
+        if: env.SONAR_TOKEN != ''
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

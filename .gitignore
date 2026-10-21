@@ -12,3 +12,6 @@ desktop.ini
 
 # Log
 *.log
+
+# Copertura dei test
+coverage/
