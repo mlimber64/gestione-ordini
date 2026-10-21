@@ -83,6 +83,7 @@ describe('InventoryList', () => {
     open.mockReturnValue({ afterClosed: () => of(undefined) });
     component.act('receive', stock);
 
+    expect(open).toHaveBeenCalledTimes(1);
     http.expectNone('/api/v1/inventory/p-1/receipts');
   });
 });
