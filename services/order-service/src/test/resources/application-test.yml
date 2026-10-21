@@ -12,3 +12,6 @@ app:
     bootstrap-admin:
       username: admin
       password: test-admin-1234
+  outbox:
+    relay:
+      poll-interval: 200ms
