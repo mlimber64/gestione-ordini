@@ -1,0 +1,65 @@
+# Porta gli eventi a Kafka con Debezium (CDC) al posto del relay che interroga la tabella (ADR 0019).
+# Si combina con il compose principale:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.cdc.yml --profile app up -d --build
+#
+# Cambia insieme tre cose, così non possono restare a metà: PostgreSQL scrive il log in forma logica, parte Kafka
+# Connect con il connettore dell'outbox e order-service passa in modalità `cdc` (senza relay). Con entrambi i
+# meccanismi attivi lo stesso evento arriverebbe due volte.
+#
+# Prima di tornare al polling (senza questo file) il connettore va tolto: vedi docs/adr/0019.
+services:
+  postgres:
+    # Debezium legge le modifiche dal log di PostgreSQL, che deve essere «logical»
+    command: ["postgres", "-c", "wal_level=logical"]
+
+  order-service:
+    environment:
+      OUTBOX_MODE: cdc
+
+  connect:
+    profiles: [app]
+    image: quay.io/debezium/connect:3.7.0.Final
+    container_name: gestione-ordini-connect
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: gestione-ordini-connect
+      CONFIG_STORAGE_TOPIC: _connect.configs
+      OFFSET_STORAGE_TOPIC: _connect.offsets
+      STATUS_STORAGE_TOPIC: _connect.status
+      # Un solo broker: nessuna replica
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+      HEAP_OPTS: -Xms256M -Xmx512M
+    ports:
+      # L'API REST di Connect non ha autenticazione: solo da questo computer
+      - "127.0.0.1:${CONNECT_PORT:-8083}:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8083/connectors > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: on-failure
+
+  connector-init:
+    profiles: [app]
+    image: quay.io/debezium/connect:3.7.0.Final
+    container_name: gestione-ordini-connector-init
+    entrypoint: ["sh", "/config/register-connector.sh"]
+    environment:
+      CONNECT_URL: http://connect:8083
+      DB_USER: ${POSTGRES_USER:-ordini}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ordini_dev}
+      DB_NAME: ${POSTGRES_DB:-gestione_ordini}
+    volumes:
+      - ./debezium:/config:ro
+    depends_on:
+      connect:
+        condition: service_healthy
+    restart: "no"

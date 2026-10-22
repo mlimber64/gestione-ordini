@@ -2,6 +2,9 @@
 
 export const baseUrl = process.env.E2E_BASE_URL ?? 'http://localhost:8080';
 
+/** API REST di Kafka Connect; si imposta solo provando la modalità CDC (Debezium), altrimenti è vuota. */
+export const connectUrl = process.env.E2E_CONNECT_URL ?? '';
+
 /** Indirizzo HTTPS (con HTTP/2) dello stesso stack; il certificato è autofirmato. */
 export const tlsUrl = process.env.E2E_TLS_URL ?? 'https://localhost:8443';
 

@@ -1,0 +1,37 @@
+{
+  "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+  "plugin.name": "pgoutput",
+  "database.hostname": "postgres",
+  "database.port": "5432",
+  "database.user": "__DB_USER__",
+  "database.password": "__DB_PASSWORD__",
+  "database.dbname": "__DB_NAME__",
+  "topic.prefix": "gestione-ordini",
+
+  "schema.include.list": "orders",
+  "table.include.list": "orders.outbox_event",
+  "slot.name": "gestione_ordini_outbox",
+  "publication.name": "gestione_ordini_outbox",
+  "publication.autocreate.mode": "filtered",
+
+  "snapshot.mode": "initial",
+  "snapshot.select.statement.overrides": "orders.outbox_event",
+  "snapshot.select.statement.overrides.orders.outbox_event": "SELECT * FROM orders.outbox_event WHERE published_at IS NULL",
+
+  "heartbeat.interval.ms": "10000",
+  "extended.headers.enabled": "false",
+  "tombstones.on.delete": "false",
+
+  "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+  "value.converter": "org.apache.kafka.connect.storage.StringConverter",
+
+  "transforms": "outbox",
+  "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+  "transforms.outbox.table.field.event.id": "id",
+  "transforms.outbox.table.field.event.key": "aggregate_id",
+  "transforms.outbox.table.field.event.payload": "payload",
+  "transforms.outbox.table.expand.json.payload": "false",
+  "transforms.outbox.route.by.field": "topic",
+  "transforms.outbox.route.topic.replacement": "${routedByValue}",
+  "transforms.outbox.table.fields.additional.placement": "event_type:header:event-type,id:header:event-id"
+}
