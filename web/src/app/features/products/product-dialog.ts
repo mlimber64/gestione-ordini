@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Category, Product, ProductInput } from '../../core/models';
+import { DialogHeader } from '../../shared/dialog-header';
 
 export interface ProductDialogData {
   product: Product | null;
@@ -14,9 +15,9 @@ export interface ProductDialogData {
 
 @Component({
   selector: 'app-product-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule],
+  imports: [DialogHeader, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule],
   template: `
-    <h2 mat-dialog-title>{{ data.product ? 'Modifica prodotto' : 'Nuovo prodotto' }}</h2>
+    <app-dialog-header icon="category" [title]="data.product ? 'Modifica prodotto' : 'Nuovo prodotto'" />
     <form [formGroup]="form" (ngSubmit)="save()">
       <mat-dialog-content class="content">
         <mat-form-field>

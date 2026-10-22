@@ -9,13 +9,14 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { CatalogApi } from '../../core/api';
 import { errorMessage } from '../../core/errors';
 import { Category } from '../../core/models';
+import { DialogHeader } from '../../shared/dialog-header';
 
 /** Elenco delle categorie con l'aggiunta di una nuova (anche sotto un'altra categoria). */
 @Component({
   selector: 'app-category-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule],
+  imports: [DialogHeader, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule],
   template: `
-    <h2 mat-dialog-title>Categorie</h2>
+    <app-dialog-header icon="folder" title="Categorie" />
     <mat-dialog-content class="content">
       <ul>
         @for (c of categories(); track c.id) {

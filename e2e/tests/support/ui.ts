@@ -27,3 +27,8 @@ export async function login(page: Page, password = credentials.password): Promis
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Accedi' }).click();
 }
+
+/** Conferma la finestra modale aperta premendo il pulsante con il verbo dell'azione. */
+export async function confirmDialog(page: Page, label: string): Promise<void> {
+  await page.getByRole('dialog').getByRole('button', { name: label, exact: true }).click();
+}

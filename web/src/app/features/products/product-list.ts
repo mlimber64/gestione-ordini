@@ -21,6 +21,7 @@ import { EmptyState } from '../../shared/empty-state';
 import { TableSkeleton } from '../../shared/table-skeleton';
 import { CategoryDialog } from './category-dialog';
 import { ProductDialog, ProductDialogData } from './product-dialog';
+import { ConfirmService } from '../../shared/confirm';
 
 @Component({
   selector: 'app-product-list',
@@ -107,7 +108,7 @@ import { ProductDialog, ProductDialogData } from './product-dialog';
                 hideIcon
                 [checked]="p.active"
                 [disabled]="!auth.isAdmin()"
-                (change)="toggle(p, $event.checked)"
+                (change)="toggle(p, $event.checked, $event.source)"
                 [attr.aria-label]="'Attiva o disattiva ' + p.name"
               />
             </td>
@@ -141,6 +142,7 @@ import { ProductDialog, ProductDialogData } from './product-dialog';
 export class ProductList implements OnInit {
   private readonly api = inject(CatalogApi);
   private readonly dialog = inject(MatDialog);
+  private readonly confirmation = inject(ConfirmService);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly auth = inject(AuthService);
 
@@ -193,14 +195,32 @@ export class ProductList implements OnInit {
       });
   }
 
-  protected toggle(product: Product, active: boolean): void {
-    this.api.setProductActive(product.id, active).subscribe({
-      next: () => this.reload(this.page()),
-      error: (error: unknown) => {
-        this.fail(error);
-        this.reload(this.page());
-      },
-    });
+  protected toggle(product: Product, active: boolean, control?: { checked: boolean }): void {
+    const apply = () =>
+      this.api.setProductActive(product.id, active).subscribe({
+        next: () => this.reload(this.page()),
+        error: (error: unknown) => {
+          this.fail(error);
+          this.reload(this.page());
+        },
+      });
+    if (active) {
+      apply();
+      return;
+    }
+    // Disattivare toglie il prodotto dai nuovi ordini: si chiede, e se si rinuncia l'interruttore torna com'era
+    this.confirmation
+      .ask({
+        title: 'Disattivare il prodotto?',
+        message: `${product.name} non comparirà più nella ricerca dei nuovi ordini. Gli ordini già fatti non cambiano.`,
+        confirmLabel: 'Disattiva',
+        icon: 'visibility_off',
+        tone: 'warn',
+      })
+      .subscribe((yes) => {
+        if (yes) apply();
+        else if (control) control.checked = true;
+      });
   }
 
   protected manageCategories(): void {

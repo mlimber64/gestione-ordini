@@ -1,10 +1,13 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { Router, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { CustomerSummary, Page } from '../../core/models';
 import { fakeJwt } from '../../core/testing';
+import { CustomerDialogResult } from './customer-dialog';
 import { CustomerList } from './customer-list';
 
 const customer = (name: string): CustomerSummary => ({
@@ -67,5 +70,82 @@ describe('CustomerList', () => {
 
     const avatars = Array.from(element.querySelectorAll('.avatar-sm')).map((e) => e.textContent?.trim());
     expect(avatars).toEqual(['EC', 'C']);
+  });
+});
+
+describe('CustomerList · nuovo cliente', () => {
+  let http: HttpTestingController;
+  const open = vi.fn();
+  let component: { create(): void };
+  let navigate: ReturnType<typeof vi.spyOn>;
+
+  const result = (withAddress: boolean): CustomerDialogResult => ({
+    customer: { name: 'Rossi Srl', email: 'info@rossi.example', phone: null, vatNumber: null, taxCode: null },
+    address: withAddress
+      ? { type: 'SHIPPING', street: 'Via Roma 1', city: 'Salerno', province: 'SA', postalCode: '84121', country: 'IT', defaultAddress: true }
+      : null,
+  });
+
+  beforeEach(() => {
+    open.mockReset();
+    TestBed.configureTestingModule({
+      imports: [CustomerList],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: MatDialog, useValue: { open } }],
+    });
+    TestBed.inject(AuthService).accessToken.set(fakeJwt({ sub: 'anna', roles: ['OPERATOR'] }));
+    http = TestBed.inject(HttpTestingController);
+    navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const fixture = TestBed.createComponent(CustomerList);
+    fixture.detectChanges();
+    http.expectOne((r) => r.url === '/api/v1/customers').flush(page([]));
+    component = fixture.componentInstance as unknown as typeof component;
+  });
+
+  it('se si chiude la finestra senza registrare non succede niente', () => {
+    open.mockReturnValue({ afterClosed: () => of(undefined) });
+    component.create();
+
+    http.expectNone('/api/v1/customers');
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("registra il cliente e, se c'è, il suo indirizzo, poi apre la scheda", () => {
+    open.mockReturnValue({ afterClosed: () => of(result(true)) });
+    component.create();
+
+    http.expectOne({ method: 'POST', url: '/api/v1/customers' }).flush({ ...customer('Rossi Srl'), id: 'c-9' });
+    const address = http.expectOne({ method: 'POST', url: '/api/v1/customers/c-9/addresses' });
+    expect(address.request.body).toMatchObject({ type: 'SHIPPING', defaultAddress: true });
+    address.flush({});
+    expect(navigate).toHaveBeenCalledWith(['/clienti', 'c-9']);
+  });
+
+  it("senza indirizzo registra solo il cliente e apre la scheda", () => {
+    open.mockReturnValue({ afterClosed: () => of(result(false)) });
+    component.create();
+
+    http.expectOne({ method: 'POST', url: '/api/v1/customers' }).flush({ ...customer('Rossi Srl'), id: 'c-9' });
+
+    http.expectNone('/api/v1/customers/c-9/addresses');
+    expect(navigate).toHaveBeenCalledWith(['/clienti', 'c-9']);
+  });
+
+  it("se l'indirizzo non si salva il cliente c'è comunque e si apre la sua scheda", () => {
+    open.mockReturnValue({ afterClosed: () => of(result(true)) });
+    component.create();
+
+    http.expectOne({ method: 'POST', url: '/api/v1/customers' }).flush({ ...customer('Rossi Srl'), id: 'c-9' });
+    http.expectOne('/api/v1/customers/c-9/addresses').flush({ detail: 'x' }, { status: 500, statusText: 'Errore' });
+
+    expect(navigate).toHaveBeenCalledWith(['/clienti', 'c-9']);
+  });
+
+  it('un errore nella registrazione non apre nessuna scheda', () => {
+    open.mockReturnValue({ afterClosed: () => of(result(false)) });
+    component.create();
+
+    http.expectOne({ method: 'POST', url: '/api/v1/customers' }).flush({ detail: 'Email già in uso' }, { status: 409, statusText: 'Conflict' });
+
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

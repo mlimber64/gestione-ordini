@@ -19,6 +19,7 @@ import {
 } from '../../core/labels';
 import { OrderPayments, Payment, PaymentInput, PaymentMethod, PaymentStatus } from '../../core/models';
 import { PaymentDialog, PaymentDialogData } from './payment-dialog';
+import { ConfirmOptions, ConfirmService } from '../../shared/confirm';
 
 /**
  * Pagamenti di un ordine, registrati a mano da chi ha il permesso. Il pagamento non cambia lo stato dell'ordine:
@@ -207,6 +208,7 @@ export class OrderPaymentsPanel implements OnInit {
   private readonly api = inject(PaymentsApi);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly confirmation = inject(ConfirmService);
   protected readonly auth = inject(AuthService);
 
   protected readonly data = signal<OrderPayments | null>(null);
@@ -252,7 +254,32 @@ export class OrderPaymentsPanel implements OnInit {
 
   protected act(payment: Payment, action: 'pay' | 'fail' | 'refund'): void {
     const done = { pay: 'Pagamento incassato', fail: 'Pagamento segnato come non riuscito', refund: 'Pagamento rimborsato' };
-    this.execute(this.api[action](payment.id), done[action]);
+    const amount = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(payment.amount);
+    const confirmation: Record<typeof action, ConfirmOptions> = {
+      pay: {
+        title: 'Incassare il pagamento?',
+        message: `Segni come incassati ${amount}: l'importo si somma a quanto già pagato.`,
+        confirmLabel: 'Incassa',
+        icon: 'payments',
+      },
+      fail: {
+        title: 'Segnare come non riuscito?',
+        message: `Il pagamento di ${amount} non verrà contato e l'importo tornerà da incassare.`,
+        confirmLabel: 'Segna come non riuscito',
+        icon: 'error',
+        tone: 'warn',
+      },
+      refund: {
+        title: 'Rimborsare il pagamento?',
+        message: `Il pagamento di ${amount} viene rimborsato e l'importo torna da incassare.`,
+        confirmLabel: 'Rimborsa',
+        icon: 'undo',
+        tone: 'warn',
+      },
+    };
+    this.confirmation.ask(confirmation[action]).subscribe((yes) => {
+      if (yes) this.execute(this.api[action](payment.id), done[action]);
+    });
   }
 
   private execute(request: Observable<Payment>, message: string): void {

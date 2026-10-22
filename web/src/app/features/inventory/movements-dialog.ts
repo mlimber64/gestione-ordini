@@ -7,12 +7,13 @@ import { MatTableModule } from '@angular/material/table';
 import { InventoryApi } from '../../core/api';
 import { MOVEMENT_LABEL } from '../../core/labels';
 import { Movement, Stock } from '../../core/models';
+import { DialogHeader } from '../../shared/dialog-header';
 
 @Component({
   selector: 'app-movements-dialog',
-  imports: [DatePipe, MatDialogModule, MatTableModule, MatPaginatorModule, MatButtonModule],
+  imports: [DialogHeader, DatePipe, MatDialogModule, MatTableModule, MatPaginatorModule, MatButtonModule],
   template: `
-    <h2 mat-dialog-title>Movimenti · {{ stock.sku }}</h2>
+    <app-dialog-header icon="history" [title]="'Movimenti · ' + stock.sku" [subtitle]="stock.productName" />
     <mat-dialog-content class="content">
       <table mat-table [dataSource]="rows()">
         <ng-container matColumnDef="date">

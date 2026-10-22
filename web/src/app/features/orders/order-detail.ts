@@ -15,6 +15,7 @@ import { NEXT_STEPS, ORDER_STATUS_CLASS, ORDER_STATUS_LABEL } from '../../core/l
 import { Order, OrderStatus } from '../../core/models';
 import { CancelDialog } from './cancel-dialog';
 import { OrderPaymentsPanel } from './order-payments';
+import { ConfirmOptions, ConfirmService } from '../../shared/confirm';
 
 type Step = 'confirm' | 'ship' | 'deliver' | 'cancel';
 
@@ -23,6 +24,30 @@ const STEP_LABEL: Record<Step, { text: string; icon: string }> = {
   ship: { text: 'Spedisci', icon: 'local_shipping' },
   deliver: { text: 'Segna come consegnato', icon: 'inventory' },
   cancel: { text: 'Annulla ordine', icon: 'cancel' },
+};
+
+/** Ogni passo dell'ordine ha conseguenze (merce che esce, cliente che attende): si chiede conferma dicendo quali. */
+const CONFIRMATION: Record<Exclude<Step, 'cancel'>, ConfirmOptions> = {
+  confirm: {
+    title: "Confermare l'ordine?",
+    message: "L'ordine passa da In attesa a Confermato.",
+    confirmLabel: 'Conferma ordine',
+    icon: 'task_alt',
+  },
+  ship: {
+    title: "Spedire l'ordine?",
+    message: "L'ordine passa a Spedito e la merce riservata viene scaricata dal magazzino.",
+    confirmLabel: 'Spedisci',
+    icon: 'local_shipping',
+    tone: 'warn',
+  },
+  deliver: {
+    title: 'Segnare come consegnato?',
+    message: "L'ordine passa a Consegnato: è l'ultimo passo e non si torna indietro.",
+    confirmLabel: 'Segna come consegnato',
+    icon: 'inventory',
+    tone: 'warn',
+  },
 };
 
 /** Le tappe del percorso normale di un ordine, nell'ordine in cui avvengono. */
@@ -457,6 +482,7 @@ export class OrderDetail implements OnInit {
   private readonly api = inject(OrdersApi);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly confirmation = inject(ConfirmService);
   protected readonly auth = inject(AuthService);
 
   protected readonly order = signal<Order | null>(null);
@@ -491,12 +517,14 @@ export class OrderDetail implements OnInit {
         });
       return;
     }
-    const requests: Record<Exclude<Step, 'cancel'>, Observable<Order>> = {
-      confirm: this.api.confirm(this.id()),
-      ship: this.api.ship(this.id()),
-      deliver: this.api.deliver(this.id()),
+    const requests: Record<Exclude<Step, 'cancel'>, () => Observable<Order>> = {
+      confirm: () => this.api.confirm(this.id()),
+      ship: () => this.api.ship(this.id()),
+      deliver: () => this.api.deliver(this.id()),
     };
-    this.execute(requests[step]);
+    this.confirmation.ask(CONFIRMATION[step]).subscribe((yes) => {
+      if (yes) this.execute(requests[step]());
+    });
   }
 
   private execute(request: Observable<Order>): void {

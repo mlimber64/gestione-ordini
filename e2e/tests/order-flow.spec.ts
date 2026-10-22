@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { Fixture, authMode, createFixture } from './support/api';
-import { login } from './support/ui';
+import { confirmDialog, login } from './support/ui';
 
 test.describe('accesso', () => {
   test('con una password sbagliata resta sulla schermata di accesso e mostra l\'errore', async ({ page }) => {
@@ -63,6 +63,7 @@ test.describe('ordine dalla creazione alla conferma', () => {
     await expect(page.getByText(fixture.customerName).first()).toBeVisible();
 
     await page.getByRole('button', { name: 'Conferma' }).click();
+    await confirmDialog(page, 'Conferma ordine');
     await expect(status).toHaveText('Confermato');
 
     // La cronologia si carica all'accesso, prima di creare l'ordine: ciò che compare qui è arrivato dallo stream.

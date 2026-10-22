@@ -2,9 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { fakeJwt } from '../../core/testing';
 import { Order, OrderStatus } from '../../core/models';
+import { ConfirmService } from '../../shared/confirm';
 import { OrderDetail, journeyOf } from './order-detail';
 
 const order = (status: OrderStatus): Order => ({
@@ -155,5 +157,60 @@ describe('journeyOf', () => {
 
   it('un ordine annullato non ha percorso: si mostra l\'annullamento', () => {
     expect(journeyOf(base('CANCELLED', ['PENDING', 'CANCELLED']))).toEqual([]);
+  });
+});
+
+describe('OrderDetail · conferme', () => {
+  let http: HttpTestingController;
+  const ask = vi.fn();
+
+  beforeEach(() => {
+    ask.mockReset();
+    TestBed.configureTestingModule({
+      imports: [OrderDetail],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: ConfirmService, useValue: { ask } }],
+    });
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  function show(status: OrderStatus) {
+    TestBed.inject(AuthService).accessToken.set(fakeJwt({ sub: 'anna', roles: ['ADMIN'] }));
+    const fixture = TestBed.createComponent(OrderDetail);
+    fixture.componentRef.setInput('id', 'o-1');
+    fixture.detectChanges();
+    http.expectOne('/api/v1/orders/o-1').flush(order(status));
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const click = (label: string) => {
+      [...element.querySelectorAll('button')].find((b) => b.textContent!.includes(label))!.click();
+      fixture.detectChanges();
+    };
+    return { click };
+  }
+
+  it('confermare, spedire e consegnare chiedono conferma e solo con il sì parte la richiesta', () => {
+    const cases: [OrderStatus, string, string, string][] = [
+      ['PENDING', 'Conferma', 'Conferma ordine', '/api/v1/orders/o-1/confirm'],
+      ['CONFIRMED', 'Spedisci', 'Spedisci', '/api/v1/orders/o-1/ship'],
+      ['SHIPPED', 'Segna come consegnato', 'Segna come consegnato', '/api/v1/orders/o-1/deliver'],
+    ];
+    for (const [status, button, label, url] of cases) {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [OrderDetail],
+        providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: ConfirmService, useValue: { ask } }],
+      });
+      http = TestBed.inject(HttpTestingController);
+      ask.mockReturnValue(of(false));
+      const { click } = show(status);
+
+      click(button);
+      expect(ask).toHaveBeenLastCalledWith(expect.objectContaining({ confirmLabel: label }));
+      http.expectNone(url);
+
+      ask.mockReturnValue(of(true));
+      click(button);
+      http.expectOne(url).flush(order(status));
+    }
   });
 });

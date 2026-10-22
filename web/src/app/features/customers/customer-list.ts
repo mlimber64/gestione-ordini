@@ -2,25 +2,28 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { CustomersApi } from '../../core/api';
 import { AuthService } from '../../core/auth.service';
 import { CustomerStatus, CustomerSummary } from '../../core/models';
 import { EmptyState } from '../../shared/empty-state';
 import { TableSkeleton } from '../../shared/table-skeleton';
+import { errorMessage } from '../../core/errors';
+import { CustomerDialog, CustomerDialogResult } from './customer-dialog';
 
 @Component({
   selector: 'app-customer-list',
   imports: [
     ReactiveFormsModule,
-    RouterLink,
     MatTableModule,
     MatPaginatorModule,
     MatFormFieldModule,
@@ -39,7 +42,7 @@ import { TableSkeleton } from '../../shared/table-skeleton';
           <p class="page-sub">{{ total() }} clienti in totale</p>
         </div>
         @if (auth.canWrite()) {
-          <a mat-flat-button routerLink="/clienti/nuovo"><mat-icon>add</mat-icon>Nuovo cliente</a>
+          <button mat-flat-button (click)="create()"><mat-icon>add</mat-icon>Nuovo cliente</button>
         }
       </div>
 
@@ -112,6 +115,8 @@ import { TableSkeleton } from '../../shared/table-skeleton';
 export class CustomerList implements OnInit {
   private readonly api = inject(CustomersApi);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
   protected readonly auth = inject(AuthService);
 
   protected readonly columns = ['name', 'code', 'vat', 'status'];
@@ -147,6 +152,31 @@ export class CustomerList implements OnInit {
   protected onPage(event: PageEvent): void {
     this.size = event.pageSize;
     this.reload(event.pageIndex);
+  }
+
+  protected create(): void {
+    this.dialog
+      .open<CustomerDialog, void, CustomerDialogResult>(CustomerDialog)
+      .afterClosed()
+      .subscribe((result) => {
+        if (!result) return;
+        this.api.create(result.customer).subscribe({
+          next: (saved) => {
+            if (!result.address) return this.done(saved.id, 'Cliente registrato');
+            this.api.addAddress(saved.id, result.address).subscribe({
+              next: () => this.done(saved.id, 'Cliente registrato'),
+              // Il cliente c'è: l'indirizzo si potrà aggiungere dalla sua scheda
+              error: () => this.done(saved.id, "Cliente registrato, ma l'indirizzo non è stato salvato"),
+            });
+          },
+          error: (error: unknown) => this.snackBar.open(errorMessage(error), 'Chiudi', { duration: 8000 }),
+        });
+      });
+  }
+
+  private done(id: string, message: string): void {
+    this.snackBar.open(message);
+    void this.router.navigate(['/clienti', id]);
   }
 
   protected open(customer: CustomerSummary): void {

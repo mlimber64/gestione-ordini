@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createFixture, createOrder } from './support/api';
-import { login, openOrder } from './support/ui';
+import { confirmDialog, login, openOrder } from './support/ui';
 
 test.describe('pagamenti di un ordine', () => {
   test('registra un bonifico, lo incassa e l\'ordine risulta pagato senza cambiare stato', async ({ page }) => {
@@ -31,6 +31,7 @@ test.describe('pagamenti di un ordine', () => {
     await expect(settlement).toHaveText('Da pagare');
 
     await row.getByRole('button', { name: 'Incassa' }).click();
+    await confirmDialog(page, 'Incassa');
     await expect(settlement).toHaveText('Pagato');
     await expect(row).toContainText('Incassato');
     await expect(row.getByRole('button', { name: 'Incassa' })).toHaveCount(0);
@@ -49,9 +50,11 @@ test.describe('pagamenti di un ordine', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Registra', exact: true }).click();
     const row = payments.getByRole('row', { name: /Bonifico/ });
     await row.getByRole('button', { name: 'Incassa' }).click();
+    await confirmDialog(page, 'Incassa');
     await expect(payments.locator('.head .chip')).toHaveText('Pagato');
 
     await row.getByRole('button', { name: 'Rimborsa' }).click();
+    await confirmDialog(page, 'Rimborsa');
 
     await expect(row).toContainText('Rimborsato');
     await expect(payments.locator('.head .chip')).toHaveText('Da pagare');
