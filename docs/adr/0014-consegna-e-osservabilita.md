@@ -25,4 +25,4 @@ Un progetto che si compila solo sul computer di chi l'ha scritto non è un prodo
 
 - I valori predefiniti del compose (segreto JWT e password di amministratore) sono di demo e dichiarati tali; fuori dal proprio computer vanno sostituiti.
 - Ogni scheda aperta tiene una connessione SSE; con HTTP/1.1 un browser ne consente circa sei per origine. Davanti al frontend serve HTTP/2, che nel compose non è configurato.
-- Non c'è ancora un test automatico nel browser sull'intero percorso: la verifica con il browser è stata manuale.
+- Il percorso nel browser (accesso, ordine, conferma, notifiche in diretta) ha ora un test automatico in `e2e/`, eseguito nel job `e2e` della CI; il resto delle schermate è stato verificato a mano.

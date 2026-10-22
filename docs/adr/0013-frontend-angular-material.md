@@ -27,4 +27,4 @@ L'applicazione web deve coprire login, clienti, prodotti, magazzino, ordini e no
 
 - Il token di refresh in `sessionStorage` è leggibile da uno script nella stessa pagina: un XSS lo esporrebbe. Si riduce il rischio con la CSP e l'assenza di HTML dinamico non fidato, ma non lo si elimina; con un identity provider si userebbe un cookie `HttpOnly`.
 - Il totale mostrato nel nuovo ordine è una stima: il calcolo definitivo (con arrotondamenti per riga) lo fa il server.
-- Il frontend non ha ancora test end-to-end nel browser; i test unitari coprono sessione, interceptor, interprete SSE e validazioni.
+- I test unitari coprono sessione, interceptor, interprete SSE e validazioni; il percorso nel browser è provato dai test di punta a punta in `e2e/` (Playwright), che coprono solo il flusso principale.
