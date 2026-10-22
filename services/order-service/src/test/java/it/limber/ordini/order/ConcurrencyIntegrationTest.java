@@ -11,10 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -60,23 +56,6 @@ class ConcurrencyIntegrationTest extends ApiTestSupport {
 		String id = createCustomerWithAddress(token);
 		customers.add(UUID.fromString(id));
 		return id;
-	}
-
-	/** Lancia tutte le azioni nello stesso istante e restituisce i codici HTTP ottenuti. */
-	private List<Integer> runTogether(List<Callable<Integer>> actions) throws Exception {
-		CountDownLatch start = new CountDownLatch(1);
-		try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-			List<Future<Integer>> futures = actions.stream().map(action -> executor.submit(() -> {
-				start.await();
-				return action.call();
-			})).toList();
-			start.countDown();
-			List<Integer> statuses = new ArrayList<>();
-			for (Future<Integer> future : futures) {
-				statuses.add(future.get());
-			}
-			return statuses;
-		}
 	}
 
 	private int stockValue(String token, String productId, String field) throws Exception {

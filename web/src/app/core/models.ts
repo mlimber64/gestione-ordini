@@ -168,6 +168,45 @@ export interface PlaceOrderInput {
   items: { productId: string; quantity: number }[];
 }
 
+export type PaymentMethod = 'BANK_TRANSFER' | 'CARD' | 'CASH_ON_DELIVERY';
+
+export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+
+/** Quanto dell'ordine è stato incassato. */
+export type Settlement = 'UNPAID' | 'PARTIAL' | 'PAID';
+
+export interface Payment {
+  id: string;
+  orderId: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  amount: number;
+  reference: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string;
+  updatedAt: string;
+  paidAt: string | null;
+}
+
+/** Pagamenti di un ordine con il riepilogo: `balance` manca da incassare, `registrable` si può ancora registrare. */
+export interface OrderPayments {
+  orderId: string;
+  total: number;
+  paid: number;
+  pending: number;
+  balance: number;
+  registrable: number;
+  settlement: Settlement;
+  payments: Payment[];
+}
+
+export interface PaymentInput {
+  method: PaymentMethod;
+  amount: number;
+  reference: string | null;
+}
+
 export type Severity = 'INFO' | 'WARNING';
 
 export interface AppNotification {

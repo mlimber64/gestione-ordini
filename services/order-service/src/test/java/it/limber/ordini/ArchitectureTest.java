@@ -45,7 +45,7 @@ class ArchitectureTest {
 	/** Una funzionalità può usare l'application di un'altra, mai i suoi adapter. */
 	@ArchTest
 	static void le_funzionalita_non_dipendono_dagli_adapter_delle_altre(JavaClasses classes) {
-		List<String> features = List.of("identity", "customer", "catalog", "inventory", "order");
+		List<String> features = List.of("identity", "customer", "catalog", "inventory", "order", "payment");
 		for (String feature : features) {
 			String[] otherAdapters = features.stream()
 				.filter(other -> !other.equals(feature))
@@ -60,10 +60,10 @@ class ArchitectureTest {
 		}
 	}
 
-	/** Dove il dominio è ricco (magazzino, ordini) non conosce né JPA né JDBC: si testa senza database. */
+	/** Dove il dominio è ricco (magazzino, ordini, pagamenti) non conosce né JPA né JDBC: si testa senza database. */
 	@ArchTest
 	static final ArchRule il_dominio_ricco_non_conosce_la_persistenza = noClasses().that()
-		.resideInAnyPackage("..inventory.domain..", "..order.domain..")
+		.resideInAnyPackage("..inventory.domain..", "..order.domain..", "..payment.domain..")
 		.should()
 		.dependOnClassesThat()
 		.resideInAnyPackage("jakarta.persistence..", "org.springframework.jdbc..", "org.springframework.data.jpa..",

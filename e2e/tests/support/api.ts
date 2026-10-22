@@ -11,7 +11,9 @@ export const credentials = {
 };
 
 export interface Fixture {
+  customerId: string;
   customerName: string;
+  productId: string;
   productSku: string;
   productName: string;
 }
@@ -81,5 +83,21 @@ export async function createFixture(): Promise<Fixture> {
     defaultAddress: true,
   });
 
-  return { customerName, productSku, productName };
+  return { customerId: customer.id, customerName, productId: product.id, productSku, productName };
+}
+
+/** Crea direttamente un ordine del cliente per `quantity` pezzi del prodotto (10 € + IVA 22% l'uno). */
+export async function createOrder(fixture: Fixture, quantity = 3): Promise<{ id: string; number: string }> {
+  const { accessToken } = await call<{ accessToken: string }>('/api/v1/auth/login', 'POST', credentials);
+  return call<{ id: string; number: string }>(
+    '/api/v1/orders',
+    'POST',
+    {
+      customerId: fixture.customerId,
+      shippingAddressId: null,
+      notes: null,
+      items: [{ productId: fixture.productId, quantity }],
+    },
+    accessToken,
+  );
 }

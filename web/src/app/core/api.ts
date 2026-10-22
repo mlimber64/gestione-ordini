@@ -12,9 +12,12 @@ import {
   CustomerSummary,
   Movement,
   Order,
+  OrderPayments,
   OrderStatus,
   OrderSummary,
   Page,
+  Payment,
+  PaymentInput,
   PlaceOrderInput,
   Product,
   ProductInput,
@@ -172,6 +175,33 @@ export class OrdersApi {
 
   cancel(id: string, reason: string): Observable<Order> {
     return this.http.post<Order>(`${BASE}/orders/${id}/cancel`, { reason });
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class PaymentsApi {
+  private readonly http = inject(HttpClient);
+
+  forOrder(orderId: string): Observable<OrderPayments> {
+    return this.http.get<OrderPayments>(`${BASE}/orders/${orderId}/payments`);
+  }
+
+  register(orderId: string, input: PaymentInput): Observable<Payment> {
+    return this.http.post<Payment>(`${BASE}/orders/${orderId}/payments`, input);
+  }
+
+  /** Il denaro è arrivato. */
+  pay(id: string): Observable<Payment> {
+    return this.http.post<Payment>(`${BASE}/payments/${id}/pay`, null);
+  }
+
+  /** Il pagamento non è andato a buon fine. */
+  fail(id: string): Observable<Payment> {
+    return this.http.post<Payment>(`${BASE}/payments/${id}/fail`, null);
+  }
+
+  refund(id: string): Observable<Payment> {
+    return this.http.post<Payment>(`${BASE}/payments/${id}/refund`, null);
   }
 }
 

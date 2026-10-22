@@ -9,7 +9,14 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -101,6 +108,23 @@ public abstract class ApiTestSupport {
 	protected static String orderJson(String customerId, String productId, int quantity) {
 		return """
 				{"customerId":"%s","items":[{"productId":"%s","quantity":%d}]}""".formatted(customerId, productId, quantity);
+	}
+
+	/** Lancia tutte le azioni nello stesso istante e restituisce i codici HTTP ottenuti, nello stesso ordine. */
+	protected static List<Integer> runTogether(List<Callable<Integer>> actions) throws Exception {
+		CountDownLatch start = new CountDownLatch(1);
+		try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+			List<Future<Integer>> futures = actions.stream().map(action -> executor.submit(() -> {
+				start.await();
+				return action.call();
+			})).toList();
+			start.countDown();
+			List<Integer> statuses = new ArrayList<>();
+			for (Future<Integer> future : futures) {
+				statuses.add(future.get());
+			}
+			return statuses;
+		}
 	}
 
 	protected static String idOf(ResultActions result) throws Exception {
