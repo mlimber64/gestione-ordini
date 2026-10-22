@@ -46,6 +46,7 @@ const COLLAPSED_KEY = 'gestione-ordini.menu-compresso';
     MatTooltipModule,
   ],
   template: `
+    <a class="skip" href="/" (click)="skipToContent($event)">Vai al contenuto</a>
     <div class="layout" [class.compact]="compact()" (keydown.escape)="drawer.set(false)">
       @if (mobile() && drawer()) {
         <button class="scrim" type="button" aria-label="Chiudi il menu" (click)="drawer.set(false)"></button>
@@ -169,7 +170,7 @@ const COLLAPSED_KEY = 'gestione-ordini.menu-compresso';
           </mat-menu>
         </header>
 
-        <main><router-outlet /></main>
+        <main id="contenuto" tabindex="-1"><router-outlet /></main>
       </div>
     </div>
   `,
@@ -177,6 +178,24 @@ const COLLAPSED_KEY = 'gestione-ordini.menu-compresso';
     :host {
       --nav-width: 256px;
       --nav-width-compact: 76px;
+    }
+    .skip {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      z-index: 100;
+      padding: 10px 16px;
+      border-radius: 8px;
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+      text-decoration: none;
+      transform: translateY(-200%);
+    }
+    .skip:focus {
+      transform: none;
+    }
+    main:focus {
+      outline: none;
     }
     .layout {
       display: grid;
@@ -605,6 +624,12 @@ export class Shell implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.toasts?.unsubscribe();
     this.notifications.stop();
+  }
+
+  /** Porta il focus sul contenuto: chi naviga da tastiera salta il menu senza attraversarlo ogni volta. */
+  protected skipToContent(event: Event): void {
+    event.preventDefault();
+    document.getElementById('contenuto')?.focus();
   }
 
   protected toggleCompact(): void {
