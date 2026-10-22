@@ -4,6 +4,10 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/); il versiona
 
 ## [Non rilasciato]
 
+## [1.1.0] - 2026-10-22
+
+Sette miglioramenti: test di punta a punta, HTTPS con HTTP/2, pagamenti, immagini pubblicate, CDC con Debezium, accesso con Keycloak e refresh in un cookie HttpOnly.
+
 ### Aggiunto
 - Accesso con **Keycloak** come alternativa al login interno (ADR 0021): `deploy/docker-compose.keycloak.yml` aggiunge Keycloak 26 con un realm importato (utenti `admin`, `operatore`, `lettore`) dietro nginx su `/auth`. Authorization Code con PKCE sulla pagina di accesso di Keycloak; i due servizi verificano i token RS256 con le chiavi pubbliche (JWKS), senza segreto condiviso. Nuova proprietà `app.auth.mode` (`local` di base, oppure `oidc`), `GET /api/v1/auth/config`, pulsante «Accedi con Keycloak» e job `e2e` della CI anche in questa configurazione.
 - CDC con Debezium come alternativa al polling dell'outbox (ADR 0019): `deploy/docker-compose.cdc.yml` aggiunge Kafka Connect con il connettore dell'outbox e porta order-service in modalità `cdc` (`app.outbox.mode`), senza cambiare il contratto degli eventi. Il job `e2e` della CI gira ora in entrambi i modi.
