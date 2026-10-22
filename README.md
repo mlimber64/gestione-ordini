@@ -22,7 +22,7 @@ docker compose -f deploy/docker-compose.yml --profile app up -d --build
 node deploy/seed.mjs        # dati di esempio (facoltativo, richiede Node 18 o successivo)
 ```
 
-Apri **http://localhost:8080** ed entra con `admin` / `admin-demo-1234` (valori di demo: vedi [Configurazione](#configurazione)).
+Apri **http://localhost:8080** ed entra con `admin` / `admin-demo-1234` (valori di demo: vedi [Configurazione](#configurazione)). Lo stesso sito è su **https://localhost:8443** con HTTP/2 e un certificato autofirmato (il browser avvisa: è normale in locale), utile per tenere aperte molte schede con le notifiche in diretta ([ADR 0015](docs/adr/0015-https-e-http2-davanti-al-frontend.md)).
 
 Per aggiungere metriche e dashboard: `--profile observability`, poi Grafana su **http://localhost:3000**. Per spegnere tutto: `docker compose -f deploy/docker-compose.yml --profile app --profile observability down`.
 
@@ -88,6 +88,7 @@ flowchart LR
 | [0012](docs/adr/0012-notifiche-sse-e-consumer-idempotente.md) | Notifiche con SSE e consumer idempotente |
 | [0013](docs/adr/0013-frontend-angular-material.md) | Frontend Angular con Material, sessione in memoria e SSE con fetch |
 | [0014](docs/adr/0014-consegna-e-osservabilita.md) | Consegna con Docker, metriche e controlli di qualità |
+| [0015](docs/adr/0015-https-e-http2-davanti-al-frontend.md) | HTTPS e HTTP/2 davanti al frontend |
 
 La qualità e le metriche sono descritte in [docs/qualita.md](docs/qualita.md).
 
@@ -114,7 +115,7 @@ In questa modalità l'utente è `admin` / `admin-dev-1234`.
 | Componente | Porta |
 |---|---|
 | web (sviluppo) | 4200 |
-| web (Docker) | 8080 |
+| web (Docker) | 8080 (HTTP), 8443 (HTTPS con HTTP/2) |
 | order-service | 8081 |
 | notification-service | 8082 |
 | PostgreSQL | 15432 |
@@ -190,7 +191,7 @@ docs/                     ADR, qualità, immagini
 - [x] **M5** Applicazione Angular
 - [x] **M6** Qualità e rilascio v1.0: Docker, metriche e Grafana, copertura, SonarCloud pronto
 
-Possibili sviluppi: pagamenti, un identity provider esterno (Keycloak), HTTP/2 davanti al frontend e CDC al posto del polling dell'outbox.
+Possibili sviluppi: pagamenti, un identity provider esterno (Keycloak) e CDC al posto del polling dell'outbox.
 
 ## Autore
 

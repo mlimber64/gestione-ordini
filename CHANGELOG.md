@@ -5,6 +5,7 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/); il versiona
 ## [Non rilasciato]
 
 ### Aggiunto
+- HTTPS con HTTP/2 davanti al frontend (porta `8443`, certificato autofirmato creato all'avvio) per superare il limite di ~6 connessioni SSE per origine di HTTP/1.1 (ADR 0015). Un test con otto schede nello stesso browser lo verifica.
 - Test di punta a punta con Playwright (`e2e/`): accesso, creazione e conferma di un ordine e notifiche ricevute in diretta, sull'applicazione completa avviata con il profilo `app`. Girano nel nuovo job `e2e` della CI.
 
 ## [1.0.0] - 2026-10-21
