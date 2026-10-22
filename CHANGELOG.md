@@ -4,6 +4,10 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/); il versiona
 
 ## [Non rilasciato]
 
+## [1.2.0] - 2026-10-22
+
+Interfaccia rinnovata e azioni in finestre modali. Nessun cambiamento ai servizi né alle API.
+
 ### Modificato
 - **Azioni in finestre modali** (ADR 0023, incidenza #43): finestra di conferma riutilizzabile al posto del `confirm()` del browser, con l'effetto dell'azione e il verbo sul pulsante; conferma per confermare, spedire e consegnare un ordine, incassare e rimborsare un pagamento, disattivare un prodotto, bloccare un cliente ed eliminare un indirizzo. Il nuovo cliente si registra da una finestra, con l'indirizzo di spedizione facoltativo. Intestazione comune per tutte le finestre.
 - **Interfaccia rinnovata** (ADR 0022, incidenza #39): sistema di design con palette petrolio e token, tema chiaro, scuro o del sistema, menu laterale scuro comprimibile (cassetto sui telefoni), barra superiore con percorso e utente, accesso a due colonne e cruscotto con fascia «da gestire», quote per stato, anello degli ordini, scorte e attività con icone. Elenchi con filtri nella scheda, righe segnaposto e stati vuoti; dettaglio ordine con percorso, banner di annullamento, totali e storico a linea del tempo; nuovo ordine con riepilogo fisso; scheda cliente con avatar e indirizzi con icone; collegamento «Vai al contenuto» per la tastiera. Nuove immagini del README.
