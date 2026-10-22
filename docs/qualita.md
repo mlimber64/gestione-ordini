@@ -6,8 +6,8 @@ Cosa controlla il progetto da solo e come si attiva ciò che richiede un account
 
 | Controllo | Dove | Cosa garantisce |
 |---|---|---|
-| Test unitari e di integrazione | CI, jobs `order-service`, `notification-service`, `web` | 99 + 16 + 45 test. Gli integrativi usano PostgreSQL e Kafka reali (Testcontainers) |
-| Copertura minima | JaCoCo, `./mvnw verify` | Il build fallisce se la copertura delle righe dei servizi scende sotto l'85% (oggi 95% e 94%) |
+| Test unitari e di integrazione | CI, jobs `order-service`, `notification-service`, `web` | 123 + 18 + 71 test. Gli integrativi usano PostgreSQL e Kafka reali (Testcontainers) |
+| Copertura minima | JaCoCo, `./mvnw verify` | Il build fallisce se la copertura delle righe dei servizi scende sotto l'85% (oggi 96% e 95%) |
 | Regole di architettura | ArchUnit, dentro i test di `order-service` | Le dipendenze vanno solo verso il dominio e le funzionalità non si toccano tra loro |
 | Build delle immagini | CI, job `docker` | I Dockerfile e il compose si costruiscono a ogni modifica |
 | Protezione di `main` | Impostazioni di GitHub | Serve un pull request con i tre jobs principali verdi |

@@ -117,5 +117,17 @@ await order(customers[4], ['INF-003', 14], ['INF-004', 20]);
 const cancelled = await order(customers[5], ['ARR-002', 5]);
 await api(`/api/v1/orders/${cancelled.id}/cancel`, 'POST', { reason: 'Il cliente ha cambiato idea' });
 
-console.log(`Fatto: ${catalog.length} prodotti, ${customers.length} clienti e 6 ordini in stati diversi.`);
+console.log('Pagamenti…');
+const payment = (target, method, amount, reference) =>
+  api(`/api/v1/orders/${target.id}/payments`, 'POST', { method, amount, reference });
+const collect = (created) => api(`/api/v1/payments/${created.id}/pay`, 'POST');
+// Consegnato e saldato con un bonifico
+await collect(await payment(delivered, 'BANK_TRANSFER', delivered.totalGross, 'CRO 0123456789'));
+// Spedito con un acconto con carta: resta da incassare la metà
+const deposit = Math.round(shipped.totalGross * 50) / 100;
+await collect(await payment(shipped, 'CARD', deposit, 'Acconto 50%'));
+// Confermato, da pagare al ritiro: il contrassegno resta in attesa
+await payment(confirmed, 'CASH_ON_DELIVERY', confirmed.totalGross, null);
+
+console.log(`Fatto: ${catalog.length} prodotti, ${customers.length} clienti e 6 ordini in stati diversi, tre con pagamenti.`);
 console.log('Gli ordini per INF-003 e ARR-001 portano alcuni prodotti sotto la soglia: compaiono tra le scorte basse.');

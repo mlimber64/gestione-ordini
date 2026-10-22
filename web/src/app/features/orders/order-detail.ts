@@ -14,6 +14,7 @@ import { errorMessage } from '../../core/errors';
 import { NEXT_STEPS, ORDER_STATUS_CLASS, ORDER_STATUS_LABEL } from '../../core/labels';
 import { Order } from '../../core/models';
 import { CancelDialog } from './cancel-dialog';
+import { OrderPaymentsPanel } from './order-payments';
 
 type Step = 'confirm' | 'ship' | 'deliver' | 'cancel';
 
@@ -26,7 +27,16 @@ const STEP_LABEL: Record<Step, { text: string; icon: string }> = {
 
 @Component({
   selector: 'app-order-detail',
-  imports: [CurrencyPipe, DatePipe, RouterLink, MatTableModule, MatButtonModule, MatIconModule, MatProgressBarModule],
+  imports: [
+    CurrencyPipe,
+    DatePipe,
+    RouterLink,
+    MatTableModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressBarModule,
+    OrderPaymentsPanel,
+  ],
   template: `
     <div class="page">
       @if (busy()) {
@@ -111,6 +121,8 @@ const STEP_LABEL: Record<Step, { text: string; icon: string }> = {
             <tr mat-footer-row *matFooterRowDef="columns"></tr>
           </table>
         </div>
+
+        <app-order-payments [orderId]="o.id" [cancelled]="o.status === 'CANCELLED'" />
 
         <h2 class="section">Storico</h2>
         <ol class="timeline">

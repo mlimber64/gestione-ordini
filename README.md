@@ -41,6 +41,8 @@ Per aggiungere metriche e dashboard: `--profile observability`, poi Grafana su *
 | ![Magazzino](docs/img/magazzino.png) | **Magazzino.** Giacenza fisica, riservata e disponibile; carico, rettifica con motivo, soglia di riordino e registro dei movimenti. Sotto soglia parte un avviso in tempo reale. |
 | ![Notifiche](docs/img/notifiche.png) | **Notifiche in diretta.** Ogni evento arriva alle schermate aperte via SSE, in italiano. Se la connessione cade, al ritorno si recuperano le notifiche perse senza buchi né doppioni. |
 
+**Pagamenti.** Nel dettaglio di ogni ordine un operatore registra bonifici, carte o contrassegni, anche a più riprese (acconto e saldo), poi li incassa, li segna come non riusciti o li rimborsa. L'ordine risulta `Da pagare`, `Pagato in parte` o `Pagato` e non si può mai incassare più del suo totale ([ADR 0018](docs/adr/0018-pagamenti-registrati-a-mano.md)). Il pagamento è un dato a parte: non cambia lo stato dell'ordine.
+
 ## Stack
 
 | Livello | Tecnologia |
@@ -71,7 +73,7 @@ flowchart LR
   M --> G["Grafana"]
 ```
 
-- **order-service**: architettura esagonale organizzata per funzionalità (identity, customer, catalog, inventory, order); le regole di ordini e magazzino stanno in un dominio senza dipendenze da JPA né da Spring, verificato con ArchUnit. Pubblica gli eventi tramite outbox.
+- **order-service**: architettura esagonale organizzata per funzionalità (identity, customer, catalog, inventory, order, payment); le regole di ordini, magazzino e pagamenti stanno in un dominio senza dipendenze da JPA né da Spring, verificato con ArchUnit. Pubblica gli eventi tramite outbox.
 - **notification-service**: servizio reattivo che consuma gli eventi in modo idempotente (un evento ricevuto due volte genera una sola notifica), manda in dead-letter i messaggi illeggibili ed espone lo stream SSE.
 - **web**: applicazione Angular con rotte caricate a richiesta; il token di accesso vive solo in memoria.
 
@@ -80,6 +82,7 @@ flowchart LR
 - **Nessuna vendita doppia**: 20 richieste simultanee per 5 pezzi producono esattamente 5 ordini e 15 risposte `409`.
 - **Nessun blocco reciproco**: ordini simultanei con gli stessi prodotti in ordine inverso si completano tutti.
 - **Un annullamento solo**: sei annullamenti simultanei dello stesso ordine liberano la merce una volta sola.
+- **Mai incassare oltre il totale**: dieci pagamenti simultanei da 10 € su un ordine da 61 € ne accettano esattamente sei.
 - **Nessun evento perso**: con Kafka spento l'ordine viene accettato e l'evento parte appena Kafka torna.
 - **Nessun evento fantasma**: una transazione annullata non lascia alcun evento.
 
@@ -97,6 +100,7 @@ flowchart LR
 | [0015](docs/adr/0015-https-e-http2-davanti-al-frontend.md) | HTTPS e HTTP/2 davanti al frontend |
 | [0016](docs/adr/0016-conservazione-delle-notifiche.md) | Conservazione delle notifiche |
 | [0017](docs/adr/0017-immagini-pubblicate-su-ghcr.md) | Immagini Docker pubblicate su GHCR |
+| [0018](docs/adr/0018-pagamenti-registrati-a-mano.md) | Pagamenti registrati a mano |
 
 La qualità e le metriche sono descritte in [docs/qualita.md](docs/qualita.md).
 
@@ -134,7 +138,7 @@ I test usano Testcontainers: richiedono solo Docker in esecuzione. `./mvnw verif
 
 ### Test nel browser
 
-I test di punta a punta (Playwright, cartella `e2e/`) provano l'applicazione completa: accesso, nuovo ordine, conferma e notifiche in diretta. Non avviano nulla da soli, quindi serve prima lo stack Docker:
+I test di punta a punta (Playwright, cartella `e2e/`) provano l'applicazione completa: accesso, nuovo ordine, conferma, notifiche in diretta, pagamenti e otto schede aperte insieme su HTTP/2. Non avviano nulla da soli, quindi serve prima lo stack Docker:
 
 ```bash
 docker compose -f deploy/docker-compose.yml --profile app up -d --build
@@ -156,6 +160,9 @@ POST /api/v1/inventory/{productId}/adjustments    rettifica (anche negativa, con
 GET  /api/v1/inventory?lowStock=true              prodotti sotto scorta
 POST /api/v1/orders                               crea l'ordine e riserva la merce (409 se non basta)
 POST /api/v1/orders/{id}/confirm | ship | deliver | cancel
+GET  /api/v1/orders/{id}/payments                 pagamenti dell'ordine con incassato e residuo
+POST /api/v1/orders/{id}/payments                 registra un pagamento (422 se supera il totale)
+POST /api/v1/payments/{id}/pay | fail | refund    incassa, segna come non riuscito, rimborsa
 GET  /api/v1/orders?status=&customerId=&from=&to= ricerca paginata
 GET  /api/v1/notifications/stream                 SSE (notification-service), con Last-Event-ID
 ```

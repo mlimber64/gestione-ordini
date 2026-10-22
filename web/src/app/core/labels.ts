@@ -1,4 +1,4 @@
-import { MovementType, OrderStatus, Role } from './models';
+import { MovementType, OrderStatus, PaymentMethod, PaymentStatus, Role, Settlement } from './models';
 
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   PENDING: 'In attesa',
@@ -15,6 +15,38 @@ export const ORDER_STATUS_CLASS: Record<OrderStatus, string> = {
   SHIPPED: 'info',
   DELIVERED: 'ok',
   CANCELLED: 'bad',
+};
+
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  BANK_TRANSFER: 'Bonifico',
+  CARD: 'Carta',
+  CASH_ON_DELIVERY: 'Contrassegno',
+};
+
+export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
+  PENDING: 'In attesa',
+  PAID: 'Incassato',
+  FAILED: 'Non riuscito',
+  REFUNDED: 'Rimborsato',
+};
+
+export const PAYMENT_STATUS_CLASS: Record<PaymentStatus, string> = {
+  PENDING: 'warn',
+  PAID: 'ok',
+  FAILED: 'bad',
+  REFUNDED: 'info',
+};
+
+export const SETTLEMENT_LABEL: Record<Settlement, string> = {
+  UNPAID: 'Da pagare',
+  PARTIAL: 'Pagato in parte',
+  PAID: 'Pagato',
+};
+
+export const SETTLEMENT_CLASS: Record<Settlement, string> = {
+  UNPAID: 'warn',
+  PARTIAL: 'info',
+  PAID: 'ok',
 };
 
 export const MOVEMENT_LABEL: Record<MovementType, string> = {

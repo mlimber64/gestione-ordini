@@ -5,6 +5,7 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/); il versiona
 ## [Non rilasciato]
 
 ### Aggiunto
+- Pagamenti (ADR 0018): registrazione manuale di bonifici, carte e contrassegni per ogni ordine, con stati `In attesa`, `Incassato`, `Non riuscito` e `Rimborsato`, acconti e saldo, e riepilogo `Da pagare` / `Pagato in parte` / `Pagato`. Il pagamento non cambia lo stato dell'ordine e non può superare il totale nemmeno con richieste simultanee (lock consultivo di PostgreSQL). Nuova tabella `payment` (migrazione V4), API, sezione nel dettaglio dell'ordine, dati di esempio e test di punta a punta.
 - Pubblicazione delle immagini Docker su GHCR a ogni tag `v*` (workflow `release-images.yml`) e `deploy/docker-compose.ghcr.yml` per usarle senza compilare (ADR 0017).
 - Pulizia notturna delle notifiche: notification-service elimina quelle ricevute da più di 30 giorni (`app.notifications.retention`), oltre la conservazione di Kafka per non rompere l'idempotenza del consumer (ADR 0016).
 - HTTPS con HTTP/2 davanti al frontend (porta `8443`, certificato autofirmato creato all'avvio) per superare il limite di ~6 connessioni SSE per origine di HTTP/1.1 (ADR 0015). Un test con otto schede nello stesso browser lo verifica.
