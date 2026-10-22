@@ -1,23 +1,96 @@
 @use '@angular/material' as mat;
+@use './theme/theme-colors' as theme;
 
-// Tema sobrio: primario azzurro-grigio, superfici neutre, densità compatta per le tabelle.
+// Sistema di design (ADR 0022). Tre livelli:
+//  1. il tema Material 3 (palette petrolio generata da un solo colore, chiaro e scuro con light-dark());
+//  2. i token dell'applicazione (--app-*): stati, raggi, ombre, menu laterale;
+//  3. le classi condivise dalle schermate (.page, .card, .table-card, .chip, .empty, .skeleton…).
+// Le schermate usano i token e non colori scritti a mano, così chiaro e scuro restano coerenti.
+
 html {
-  color-scheme: light;
+  // Di base segue il sistema; ThemeService imposta data-theme quando l'utente sceglie chiaro o scuro
+  color-scheme: light dark;
   @include mat.theme(
     (
       color: (
-        theme-type: light,
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        theme-type: color-scheme,
+        primary: theme.$primary-palette,
+        tertiary: theme.$tertiary-palette,
       ),
       typography: (
         plain-family: 'Inter Variable, system-ui, -apple-system, Segoe UI, sans-serif',
         brand-family: 'Inter Variable, system-ui, -apple-system, Segoe UI, sans-serif',
         bold-weight: 600,
       ),
-      density: -2,
+      density: -1,
     )
   );
+
+  // Forme: angoli meno «a pillola» di quelli di Material 3, più sobri per un gestionale
+  @include mat.button-overrides(
+    (
+      filled-container-shape: 10px,
+      outlined-container-shape: 10px,
+      text-container-shape: 10px,
+      protected-container-shape: 10px,
+      tonal-container-shape: 10px,
+    )
+  );
+  @include mat.form-field-overrides(
+    (
+      outlined-container-shape: 10px,
+    )
+  );
+  @include mat.dialog-overrides(
+    (
+      container-shape: 16px,
+    )
+  );
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html {
+  // Stati: sfondo tenue e testo scuro (chiaro) oppure sfondo profondo e testo chiaro (scuro)
+  --app-ok-bg: light-dark(#e1f3e8, #123524);
+  --app-ok-fg: light-dark(#14603a, #8fdcb0);
+  --app-warn-bg: light-dark(#fdf0d5, #3b2c0c);
+  --app-warn-fg: light-dark(#7a4b00, #f3c969);
+  --app-bad-bg: light-dark(#fde6e3, #3f1815);
+  --app-bad-fg: light-dark(#8e1c14, #ffb4ab);
+  --app-info-bg: light-dark(#e0ecfa, #14283f);
+  --app-info-fg: light-dark(#0b3d75, #a9cdf5);
+
+  // Colori pieni per grafici e barre (i *-fg sono colori di testo, troppo scuri o chiari per riempire)
+  --app-ok-solid: light-dark(#2e9e62, #4cc98a);
+  --app-warn-solid: light-dark(#e2a400, #f3c969);
+  --app-bad-solid: light-dark(#d4382d, #ff8a80);
+  --app-info-solid: light-dark(#2f7fd6, #7db4f0);
+
+  // Menu laterale: sempre scuro, è il punto di identità dell'interfaccia
+  --app-nav-bg: light-dark(#0c2b31, #0a171b);
+  --app-nav-fg: #b9cdd1;
+  --app-nav-fg-strong: #ffffff;
+  --app-nav-muted: #6f8d93;
+  --app-nav-hover: rgb(255 255 255 / 7%);
+  --app-nav-active: rgb(255 255 255 / 12%);
+  --app-nav-accent: #5cd1dc;
+  --app-nav-line: rgb(255 255 255 / 10%);
+
+  --app-radius: 12px;
+  --app-radius-sm: 8px;
+  --app-border: var(--mat-sys-outline-variant);
+  --app-shadow: 0 1px 2px rgb(15 35 40 / 6%), 0 2px 8px rgb(15 35 40 / 4%);
+  --app-shadow-lg: 0 8px 28px rgb(15 35 40 / 14%);
+  --app-canvas: light-dark(#f3f6f7, #0e1518);
+  --app-surface: light-dark(#ffffff, #151e22);
+  --app-surface-sunken: light-dark(#f6f9fa, #111a1e);
 }
 
 html,
@@ -27,9 +100,10 @@ body {
 }
 
 body {
-  background: var(--mat-sys-surface-container-lowest);
+  background: var(--app-canvas);
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
+  -webkit-font-smoothing: antialiased;
 }
 
 // I link semplici nel testo usano il colore primario del tema (i pulsanti Material hanno già il loro)
@@ -38,25 +112,60 @@ body {
   color: var(--mat-sys-primary);
 }
 
-// Elementi di pagina condivisi dalle varie schermate
+:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+// --- Pagina ---------------------------------------------------------------------------------------------------
+
 .page {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 24px 24px 48px;
+  padding: 28px 32px 56px;
 }
 
 .page-header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 12px 16px;
+  margin-bottom: 20px;
 
   h1 {
     font: var(--mat-sys-headline-small);
+    font-weight: 600;
+    letter-spacing: -0.01em;
     margin: 0;
     flex: 1 1 auto;
   }
+}
+
+// Titolo con sottotitolo: <div class="page-title"><h1>…</h1><p class="page-sub">…</p></div>
+.page-title {
+  flex: 1 1 auto;
+
+  h1 {
+    margin: 0;
+    font: var(--mat-sys-headline-small);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+}
+
+.page-sub {
+  margin: 2px 0 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
 }
 
 .filters {
@@ -67,14 +176,36 @@ body {
   margin-bottom: 8px;
 
   mat-form-field {
-    min-width: 200px;
+    min-width: 280px;
   }
 }
 
+// --- Superfici ------------------------------------------------------------------------------------------------
+
+.card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow);
+  padding: 18px 20px;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+  font: var(--mat-sys-title-small);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
 .table-card {
-  background: var(--mat-sys-surface);
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 8px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow);
   overflow: auto;
 
   table {
@@ -82,12 +213,22 @@ body {
     background: transparent;
   }
 
+  th.mat-mdc-header-cell {
+    background: var(--app-surface-sunken);
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-label-medium);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  tr.mat-mdc-row:hover,
+  tr.clickable:hover {
+    background: var(--app-surface-sunken);
+  }
+
   tr.clickable {
     cursor: pointer;
-
-    &:hover {
-      background: var(--mat-sys-surface-container-low);
-    }
   }
 }
 
@@ -101,16 +242,9 @@ body {
 }
 
 .empty {
-  padding: 32px;
+  padding: 40px 24px;
   text-align: center;
   color: var(--mat-sys-on-surface-variant);
-}
-
-.card {
-  background: var(--mat-sys-surface);
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 8px;
-  padding: 16px 20px;
 }
 
 .form-grid {
@@ -119,32 +253,78 @@ body {
   gap: 0 16px;
 }
 
+// --- Stati ----------------------------------------------------------------------------------------------------
+
 .chip {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 8px;
+  border-radius: 999px;
   font: var(--mat-sys-label-medium);
+  font-weight: 500;
+  white-space: nowrap;
   background: var(--mat-sys-surface-container-high);
   color: var(--mat-sys-on-surface-variant);
 
+  // Il pallino ripete il colore dello stato: lo stato non dipende solo dal colore dello sfondo
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
   &.ok {
-    background: #e3f2e6;
-    color: #1b5e2b;
+    background: var(--app-ok-bg);
+    color: var(--app-ok-fg);
   }
 
   &.warn {
-    background: #fff1d6;
-    color: #7a4a00;
+    background: var(--app-warn-bg);
+    color: var(--app-warn-fg);
   }
 
   &.bad {
-    background: #fde4e1;
-    color: #8c1d18;
+    background: var(--app-bad-bg);
+    color: var(--app-bad-fg);
   }
 
   &.info {
-    background: #e1ecf9;
-    color: #0b3d75;
+    background: var(--app-info-bg);
+    color: var(--app-info-fg);
+  }
+}
+
+// --- Caricamento ----------------------------------------------------------------------------------------------
+
+.skeleton {
+  display: block;
+  min-height: 1em;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--mat-sys-surface-container) 25%,
+    var(--mat-sys-surface-container-high) 37%,
+    var(--mat-sys-surface-container) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton 1.4s ease infinite;
+}
+
+@keyframes skeleton {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 20px 20px 48px;
   }
 }
 
