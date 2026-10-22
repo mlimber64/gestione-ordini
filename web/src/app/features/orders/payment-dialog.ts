@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { PAYMENT_METHOD_LABEL } from '../../core/labels';
 import { PaymentInput, PaymentMethod } from '../../core/models';
+import { DialogHeader } from '../../shared/dialog-header';
 
 export interface PaymentDialogData {
   /** Importo che si può ancora registrare: l'ordine non può essere pagato più del suo totale. */
@@ -24,9 +25,9 @@ function twoDecimals(control: AbstractControl): ValidationErrors | null {
 /** Registra un pagamento di un ordine: nasce «in attesa» e poi si incassa o si segna come non riuscito. */
 @Component({
   selector: 'app-payment-dialog',
-  imports: [CurrencyPipe, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule],
+  imports: [DialogHeader, CurrencyPipe, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule],
   template: `
-    <h2 mat-dialog-title>Registra pagamento</h2>
+    <app-dialog-header icon="payments" title="Registra pagamento" />
     <form [formGroup]="form" (ngSubmit)="save()">
       <mat-dialog-content class="content">
         <p class="muted">Ancora da registrare: {{ data.registrable | currency: 'EUR' }}</p>

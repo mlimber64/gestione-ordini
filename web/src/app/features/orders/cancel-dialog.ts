@@ -4,12 +4,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { DialogHeader } from '../../shared/dialog-header';
 
 @Component({
   selector: 'app-cancel-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [DialogHeader, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   template: `
-    <h2 mat-dialog-title>Annulla ordine</h2>
+    <app-dialog-header icon="cancel" tone="danger" title="Annulla ordine" />
     <form [formGroup]="form" (ngSubmit)="confirm()">
       <mat-dialog-content class="content">
         <p>La merce riservata tornerà disponibile. L'operazione non si può annullare.</p>

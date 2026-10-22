@@ -7,10 +7,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Address, AddressInput } from '../../core/models';
+import { DialogHeader } from '../../shared/dialog-header';
 
 @Component({
   selector: 'app-address-dialog',
-  imports: [
+  imports: [DialogHeader, 
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -20,7 +21,7 @@ import { Address, AddressInput } from '../../core/models';
     MatButtonModule,
   ],
   template: `
-    <h2 mat-dialog-title>{{ data ? 'Modifica indirizzo' : 'Nuovo indirizzo' }}</h2>
+    <app-dialog-header icon="location_on" [title]="data ? 'Modifica indirizzo' : 'Nuovo indirizzo'" />
     <form [formGroup]="form" (ngSubmit)="save()">
       <mat-dialog-content class="content">
         <mat-form-field>

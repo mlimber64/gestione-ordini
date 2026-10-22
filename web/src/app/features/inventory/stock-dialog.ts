@@ -5,6 +5,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Stock } from '../../core/models';
+import { DialogHeader } from '../../shared/dialog-header';
 
 export type StockAction = 'receive' | 'adjust' | 'reorder';
 
@@ -38,9 +39,9 @@ function minimumFor(action: StockAction): number {
 /** Una sola finestra per le tre operazioni sulla giacenza di un prodotto. */
 @Component({
   selector: 'app-stock-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [DialogHeader, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   template: `
-    <h2 mat-dialog-title>{{ text.title }}</h2>
+    <app-dialog-header [icon]="icon" [title]="text.title" />
     <form [formGroup]="form" (ngSubmit)="save()">
       <mat-dialog-content class="content">
         <p class="muted">
@@ -81,6 +82,7 @@ export class StockDialog {
   protected readonly data = inject<StockDialogData>(MAT_DIALOG_DATA);
   private readonly ref = inject<MatDialogRef<StockDialog, StockDialogResult>>(MatDialogRef);
   protected readonly text = TEXT[this.data.action];
+  protected readonly icon = { receive: 'add_box', adjust: 'tune', reorder: 'notifications_active' }[this.data.action];
 
   protected readonly form = inject(FormBuilder).nonNullable.group({
     value: [

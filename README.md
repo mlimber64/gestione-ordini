@@ -117,6 +117,7 @@ flowchart LR
 | [0020](docs/adr/0020-refresh-token-in-un-cookie-httponly.md) | Token di refresh in un cookie HttpOnly |
 | [0021](docs/adr/0021-keycloak-come-identity-provider-opzionale.md) | Keycloak come identity provider opzionale (OpenID Connect) |
 | [0022](docs/adr/0022-sistema-di-design-dell-interfaccia.md) | Sistema di design dell'interfaccia |
+| [0023](docs/adr/0023-azioni-in-finestre-modali.md) | Le azioni che modificano dati passano da finestre modali |
 
 La qualità e le metriche sono descritte in [docs/qualita.md](docs/qualita.md).
 

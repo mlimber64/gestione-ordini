@@ -2,9 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { Address, Customer } from '../../core/models';
 import { fakeJwt } from '../../core/testing';
+import { ConfirmService } from '../../shared/confirm';
 import { CustomerForm } from './customer-form';
 
 const address = (over: Partial<Address> = {}): Address => ({
@@ -87,5 +89,50 @@ describe('CustomerForm', () => {
 
     expect(element.querySelector('.address')).toBeNull();
     expect(element.querySelector('app-empty-state')?.textContent).toContain('almeno un indirizzo di spedizione');
+  });
+});
+
+describe('CustomerForm · conferme', () => {
+  let http: HttpTestingController;
+  const ask = vi.fn();
+  let component: { block(): void; removeAddress(a: Address): void };
+
+  beforeEach(() => {
+    ask.mockReset();
+    TestBed.configureTestingModule({
+      imports: [CustomerForm],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: ConfirmService, useValue: { ask } }],
+    });
+    http = TestBed.inject(HttpTestingController);
+    TestBed.inject(AuthService).accessToken.set(fakeJwt({ sub: 'anna', roles: ['ADMIN'] }));
+    const fixture = TestBed.createComponent(CustomerForm);
+    fixture.componentRef.setInput('id', 'c-1');
+    fixture.detectChanges();
+    http.expectOne('/api/v1/customers/c-1').flush(customer([address()]));
+    component = fixture.componentInstance as unknown as typeof component;
+  });
+
+  it('bloccare il cliente chiede conferma in tono di pericolo e, solo se si conferma, lo blocca', () => {
+    ask.mockReturnValue(of(false));
+    component.block();
+    http.expectNone({ method: 'DELETE', url: '/api/v1/customers/c-1' });
+
+    ask.mockReturnValue(of(true));
+    component.block();
+    expect(ask).toHaveBeenLastCalledWith(expect.objectContaining({ confirmLabel: 'Blocca cliente', tone: 'danger' }));
+    http.expectOne({ method: 'DELETE', url: '/api/v1/customers/c-1' }).flush(null);
+    http.expectOne('/api/v1/customers/c-1').flush(customer([address()]));
+  });
+
+  it("eliminare un indirizzo dice quale e non parte senza conferma", () => {
+    ask.mockReturnValue(of(false));
+    component.removeAddress(address());
+    http.expectNone('/api/v1/customers/c-1/addresses/a-1');
+
+    ask.mockReturnValue(of(true));
+    component.removeAddress(address());
+    expect(ask.mock.lastCall![0].message).toContain('Via Roma 1');
+    http.expectOne({ method: 'DELETE', url: '/api/v1/customers/c-1/addresses/a-1' }).flush(null);
+    http.expectOne('/api/v1/customers/c-1').flush(customer([]));
   });
 });

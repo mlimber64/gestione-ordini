@@ -40,11 +40,6 @@ export const routes: Routes = [
         title: 'Clienti · Gestione Ordini',
       },
       {
-        path: 'clienti/nuovo',
-        loadComponent: () => import('./features/customers/customer-form').then((m) => m.CustomerForm),
-        title: 'Nuovo cliente · Gestione Ordini',
-      },
-      {
         path: 'clienti/:id',
         loadComponent: () => import('./features/customers/customer-form').then((m) => m.CustomerForm),
         title: 'Cliente · Gestione Ordini',

@@ -6,6 +6,7 @@ import { of } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { OrderPayments, Payment, PaymentInput } from '../../core/models';
 import { fakeJwt } from '../../core/testing';
+import { ConfirmService } from '../../shared/confirm';
 import { OrderPaymentsPanel } from './order-payments';
 
 const payment = (overrides: Partial<Payment>): Payment => ({
@@ -38,12 +39,15 @@ const summary = (overrides: Partial<OrderPayments>): OrderPayments => ({
 describe('OrderPaymentsPanel', () => {
   let http: HttpTestingController;
   const open = vi.fn();
+  const ask = vi.fn();
 
   beforeEach(() => {
     open.mockReset();
+    ask.mockReset();
+    ask.mockReturnValue(of(true));
     TestBed.configureTestingModule({
       imports: [OrderPaymentsPanel],
-      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: MatDialog, useValue: { open } }],
+      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: MatDialog, useValue: { open } }, { provide: ConfirmService, useValue: { ask } }],
     });
     http = TestBed.inject(HttpTestingController);
   });
@@ -150,6 +154,28 @@ describe('OrderPaymentsPanel', () => {
 
     click('Rimborsa');
     http.expectOne({ method: 'POST', url: '/api/v1/payments/p-1/refund' }).flush(payment({ status: 'REFUNDED' }));
+  });
+
+  it("ogni azione sul pagamento chiede conferma dicendo l'effetto e l'importo", () => {
+    const pending = show('ADMIN', summary({ pending: 10, registrable: 26.6, payments: [payment({})] }));
+    pending.click('Incassa');
+    expect(ask).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Incassare il pagamento?', confirmLabel: 'Incassa' }));
+    expect(ask.mock.lastCall![0].message).toMatch(/10,00/);
+    http.expectOne({ method: 'POST', url: '/api/v1/payments/p-1/pay' }).flush(payment({ status: 'PAID' }));
+    http.expectOne({ method: 'GET', url: '/api/v1/orders/o-1/payments' }).flush(summary({}));
+
+    pending.click('Non riuscito');
+    expect(ask).toHaveBeenLastCalledWith(expect.objectContaining({ confirmLabel: 'Segna come non riuscito', tone: 'warn' }));
+  });
+
+  it('se non si conferma il pagamento non cambia e non parte nessuna richiesta', () => {
+    ask.mockReturnValue(of(false));
+    const { click } = show('ADMIN', summary({ pending: 10, registrable: 26.6, payments: [payment({})] }));
+
+    click('Incassa');
+    click('Non riuscito');
+
+    http.expectNone((r) => r.url.startsWith('/api/v1/payments/'));
   });
 
   it('chi può solo consultare non vede nessuna azione', () => {

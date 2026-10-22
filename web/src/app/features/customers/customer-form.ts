@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -14,6 +14,7 @@ import { errorMessage } from '../../core/errors';
 import { Address, AddressInput, Customer, CustomerInput } from '../../core/models';
 import { EmptyState } from '../../shared/empty-state';
 import { AddressDialog } from './address-dialog';
+import { ConfirmService } from '../../shared/confirm';
 
 /** Controllo della cifra di controllo della partita IVA, lo stesso algoritmo del server. */
 export function validVatNumber(value: string): boolean {
@@ -49,7 +50,7 @@ export function validVatNumber(value: string): boolean {
         @if (customer(); as c) {
           <span class="avatar-lg" aria-hidden="true">{{ initials(c.name) }}</span>
         }
-        <h1>{{ customer() ? customer()!.name : 'Nuovo cliente' }}</h1>
+        <h1>{{ customer()?.name }}</h1>
         @if (customer(); as c) {
           <span class="chip" [class]="c.status === 'ACTIVE' ? 'ok' : 'bad'">{{
             c.status === 'ACTIVE' ? 'Attivo' : 'Bloccato'
@@ -208,18 +209,18 @@ export function validVatNumber(value: string): boolean {
   `,
 })
 export class CustomerForm implements OnInit {
-  /** Id nella rotta {@code /clienti/:id}; assente per un nuovo cliente. */
-  readonly id = input<string>();
+  /** Id nella rotta {@code /clienti/:id}. Il nuovo cliente si registra da una finestra dell'elenco. */
+  readonly id = input.required<string>();
 
   private readonly api = inject(CustomersApi);
   private readonly dialog = inject(MatDialog);
+  private readonly confirmation = inject(ConfirmService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
 
   protected readonly customer = signal<Customer | null>(null);
   protected readonly busy = signal(false);
-  protected readonly isNew = computed(() => !this.id());
 
   protected readonly form = inject(FormBuilder).nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(150)]],
@@ -231,8 +232,7 @@ export class CustomerForm implements OnInit {
 
   ngOnInit(): void {
     if (!this.auth.canWrite()) this.form.disable();
-    const id = this.id();
-    if (id) this.load(id);
+    this.load(this.id());
   }
 
   protected initials(name: string): string {
@@ -257,13 +257,12 @@ export class CustomerForm implements OnInit {
     };
     this.busy.set(true);
     const id = this.id();
-    const request = id ? this.api.update(id, input) : this.api.create(input);
+    const request = this.api.update(id, input);
     request.subscribe({
       next: (saved) => {
         this.busy.set(false);
         this.snackBar.open('Cliente salvato');
-        if (id) this.customer.set(saved);
-        else void this.router.navigate(['/clienti', saved.id]);
+        this.customer.set(saved);
       },
       error: (error: unknown) => this.fail(error),
     });
@@ -271,14 +270,25 @@ export class CustomerForm implements OnInit {
 
   protected block(): void {
     const c = this.customer();
-    if (!c || !confirm(`Bloccare il cliente ${c.name}? Resterà nello storico ma non potrà più fare ordini.`)) return;
-    this.api.block(c.id).subscribe({
-      next: () => {
-        this.snackBar.open('Cliente bloccato');
-        this.load(c.id);
-      },
-      error: (error: unknown) => this.fail(error),
-    });
+    if (!c) return;
+    this.confirmation
+      .ask({
+        title: 'Bloccare il cliente?',
+        message: `${c.name} resta nello storico ma non potrà più fare ordini.`,
+        confirmLabel: 'Blocca cliente',
+        icon: 'block',
+        tone: 'danger',
+      })
+      .subscribe((yes) => {
+        if (!yes) return;
+        this.api.block(c.id).subscribe({
+          next: () => {
+            this.snackBar.open('Cliente bloccato');
+            this.load(c.id);
+          },
+          error: (error: unknown) => this.fail(error),
+        });
+      });
   }
 
   protected editAddress(address: Address | null): void {
@@ -296,11 +306,22 @@ export class CustomerForm implements OnInit {
 
   protected removeAddress(address: Address): void {
     const c = this.customer();
-    if (!c || !confirm('Eliminare questo indirizzo?')) return;
-    this.api.deleteAddress(c.id, address.id).subscribe({
-      next: () => this.load(c.id),
-      error: (error: unknown) => this.fail(error),
-    });
+    if (!c) return;
+    this.confirmation
+      .ask({
+        title: 'Eliminare questo indirizzo?',
+        message: `${address.street}, ${address.city}. I vecchi ordini mantengono il loro indirizzo di spedizione.`,
+        confirmLabel: 'Elimina indirizzo',
+        icon: 'delete',
+        tone: 'danger',
+      })
+      .subscribe((yes) => {
+        if (!yes) return;
+        this.api.deleteAddress(c.id, address.id).subscribe({
+          next: () => this.load(c.id),
+          error: (error: unknown) => this.fail(error),
+        });
+      });
   }
 
   private load(id: string): void {
