@@ -2,6 +2,9 @@
 
 export const baseUrl = process.env.E2E_BASE_URL ?? 'http://localhost:8080';
 
+/** Indirizzo HTTPS (con HTTP/2) dello stesso stack; il certificato è autofirmato. */
+export const tlsUrl = process.env.E2E_TLS_URL ?? 'https://localhost:8443';
+
 export const credentials = {
   username: process.env.E2E_USER ?? 'admin',
   password: process.env.E2E_PASSWORD ?? 'admin-demo-1234',

@@ -2,7 +2,7 @@
 # Nomi di progetto, container, volumi e porte sono propri: non interferiscono con altri container presenti sulla macchina.
 #
 #   docker compose up -d                                           solo PostgreSQL e Kafka (sviluppo dei servizi sul proprio computer)
-#   docker compose --profile app up -d --build                     tutta l'applicazione: http://localhost:8080
+#   docker compose --profile app up -d --build                     tutta l'applicazione: http://localhost:8080 (o https://localhost:8443, con HTTP/2)
 #   docker compose --profile app --profile observability up -d     in più Prometheus e Grafana: http://localhost:3000
 name: gestione-ordini
 
@@ -107,6 +107,8 @@ services:
     container_name: gestione-ordini-web
     ports:
       - "${WEB_PORT:-8080}:80"
+      # HTTPS con HTTP/2 e certificato autofirmato (il browser avvisa): vedi ADR 0015
+      - "${WEB_TLS_PORT:-8443}:443"
     depends_on:
       - order-service
       - notification-service

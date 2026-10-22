@@ -1,13 +1,6 @@
-import { Page, expect, test } from '@playwright/test';
-import { Fixture, createFixture, credentials } from './support/api';
-
-async function login(page: Page, password = credentials.password): Promise<void> {
-  await page.goto('/');
-  await expect(page).toHaveURL(/\/login$/);
-  await page.getByLabel('Nome utente').fill(credentials.username);
-  await page.getByLabel('Password', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Accedi' }).click();
-}
+import { expect, test } from '@playwright/test';
+import { Fixture, createFixture } from './support/api';
+import { login } from './support/ui';
 
 test.describe('accesso', () => {
   test('con una password sbagliata resta sulla schermata di accesso e mostra l\'errore', async ({ page }) => {
@@ -35,7 +28,7 @@ test.describe('ordine dalla creazione alla conferma', () => {
     await login(page);
 
     // Lo stream SSE di notification-service è collegato: da qui in poi le notifiche arrivano in diretta
-    await expect(page.getByText('In diretta')).toBeVisible();
+    await expect(page.getByText('In diretta', { exact: true })).toBeVisible();
 
     await page.getByRole('link', { name: 'Ordini' }).click();
     await page.getByRole('link', { name: 'Nuovo ordine' }).click();
