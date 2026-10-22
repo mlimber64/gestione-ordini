@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { tlsUrl } from './support/api';
+import { authMode, tlsUrl } from './support/api';
 import { login } from './support/ui';
 
 const REFRESH_COOKIE = 'gestione_ordini_refresh';
@@ -47,6 +47,21 @@ test.describe('sessione con il token di refresh in un cookie HttpOnly', () => {
     await expect.poll(async () => (await context.cookies()).some((c) => c.name === REFRESH_COOKIE)).toBe(false);
     await page.reload();
     await expect(page).toHaveURL(/\/login$/);
+  });
+
+  test('con Keycloak il logout chiude anche la sessione del provider: il prossimo accesso chiede di nuovo la password', async ({
+    page,
+  }) => {
+    test.skip(authMode !== 'oidc', 'riguarda solo la modalità con Keycloak');
+    await login(page);
+    await expect(page.getByText('In diretta', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /admin/ }).click();
+    await page.getByRole('menuitem', { name: 'Esci' }).click();
+    await expect(page).toHaveURL(/\/login$/);
+
+    // Con la sessione di Keycloak ancora aperta questo passaggio rientrerebbe da solo, senza mostrare il modulo
+    await page.getByRole('link', { name: 'Accedi con Keycloak' }).click();
+    await expect(page.locator('#username')).toBeVisible();
   });
 
   test.describe('in HTTPS', () => {

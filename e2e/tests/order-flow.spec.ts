@@ -1,11 +1,17 @@
 import { expect, test } from '@playwright/test';
-import { Fixture, createFixture } from './support/api';
+import { Fixture, authMode, createFixture } from './support/api';
 import { login } from './support/ui';
 
 test.describe('accesso', () => {
   test('con una password sbagliata resta sulla schermata di accesso e mostra l\'errore', async ({ page }) => {
     await login(page, 'password-sbagliata');
 
+    if (authMode === 'oidc') {
+      // La pagina di accesso di Keycloak segnala l'errore e non rimanda alla nostra applicazione
+      await expect(page).toHaveURL(/\/auth\/realms\/gestione-ordini\//);
+      await expect(page.locator('[id^="input-error"]').first()).toBeVisible();
+      return;
+    }
     await expect(page.getByRole('alert')).toHaveText('Nome utente o password non corretti.');
     await expect(page).toHaveURL(/\/login$/);
   });

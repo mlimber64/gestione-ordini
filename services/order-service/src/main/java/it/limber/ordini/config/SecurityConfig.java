@@ -1,6 +1,8 @@
 package it.limber.ordini.config;
 
 import it.limber.ordini.identity.adapter.out.security.JwtSupport;
+import it.limber.ordini.shared.auth.LocalAuth;
+import it.limber.ordini.shared.auth.OidcAuth;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,7 +15,14 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -28,7 +37,7 @@ import java.nio.charset.StandardCharsets;
  */
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties(SecurityProperties.class)
+@EnableConfigurationProperties({ SecurityProperties.class, AuthProperties.class })
 class SecurityConfig {
 
 	@Bean
@@ -54,8 +63,26 @@ class SecurityConfig {
 	}
 
 	@Bean
-	JwtDecoder jwtDecoder(SecurityProperties properties) {
+	@LocalAuth
+	JwtDecoder localJwtDecoder(SecurityProperties properties) {
 		return JwtSupport.decoder(properties, JwtSupport.ACCESS);
+	}
+
+	/**
+	 * Con Keycloak i token si verificano con le chiavi pubbliche del realm (JWKS, scaricate al primo uso e poi in cache:
+	 * order-service parte anche se Keycloak non è ancora pronto). Si controlla l'emittente e che sia un token di accesso
+	 * ({@code typ=Bearer}): Keycloak firma con la stessa chiave anche i token di refresh.
+	 */
+	@Bean
+	@OidcAuth
+	JwtDecoder oidcJwtDecoder(AuthProperties properties) {
+		AuthProperties.Oidc oidc = properties.oidc();
+		NimbusJwtDecoder decoder = NimbusJwtDecoder
+			.withJwkSetUri(oidc.backchannel() + "/protocol/openid-connect/certs")
+			.build();
+		decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefaultWithIssuer(oidc.issuer()),
+				accessTokensOnly()));
+		return decoder;
 	}
 
 	@Bean
@@ -71,6 +98,11 @@ class SecurityConfig {
 	@Bean
 	PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();
+	}
+
+	private static OAuth2TokenValidator<Jwt> accessTokensOnly() {
+		return jwt -> "Bearer".equals(jwt.getClaimAsString("typ")) ? OAuth2TokenValidatorResult.success()
+				: OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Tipo di token non valido", null));
 	}
 
 	private static AuthenticationEntryPoint unauthorized() {

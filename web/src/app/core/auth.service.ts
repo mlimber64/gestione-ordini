@@ -15,7 +15,7 @@ export function decodeUser(token: string | null): SessionUser | null {
   try {
     const payload = token.split('.')[1].replaceAll('-', '+').replaceAll('_', '/');
     const json = JSON.parse(atob(payload.padEnd(Math.ceil(payload.length / 4) * 4, '=')));
-    return { username: json.sub, roles: json.roles ?? [] };
+    return { username: json.preferred_username ?? json.sub, roles: json.roles ?? [] };
   } catch {
     return null;
   }

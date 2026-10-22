@@ -4,6 +4,7 @@ import it.limber.ordini.config.SecurityProperties;
 import it.limber.ordini.identity.application.TokenIssuer;
 import it.limber.ordini.identity.application.TokenPair;
 import it.limber.ordini.identity.domain.AppUser;
+import it.limber.ordini.shared.auth.LocalAuth;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -23,6 +24,7 @@ import java.util.UUID;
 
 /** Emette token JWT firmati con HS256: uno di accesso (breve) e uno di refresh (lungo). */
 @Component
+@LocalAuth
 class JwtTokenIssuer implements TokenIssuer {
 
 	private final SecurityProperties.Jwt config;

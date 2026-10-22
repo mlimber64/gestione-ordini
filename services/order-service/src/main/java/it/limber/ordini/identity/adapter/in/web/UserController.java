@@ -4,6 +4,7 @@ import it.limber.ordini.identity.application.UserService;
 import it.limber.ordini.identity.application.UserService.CreateUserCommand;
 import it.limber.ordini.identity.application.UserService.UserView;
 import it.limber.ordini.identity.domain.Role;
+import it.limber.ordini.shared.auth.LocalAuth;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
+@LocalAuth
 @RequestMapping("/api/v1/users")
 @PreAuthorize("hasRole('ADMIN')")
 class UserController {

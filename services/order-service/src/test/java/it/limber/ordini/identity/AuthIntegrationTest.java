@@ -37,6 +37,13 @@ class AuthIntegrationTest extends ApiTestSupport {
 	}
 
 	@Test
+	void la_configurazione_dice_che_l_accesso_e_quello_interno() throws Exception {
+		mvc.perform(get("/api/v1/auth/config")).andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("local"));
+		// I percorsi dell'accesso con Keycloak non esistono in questa modalità
+		mvc.perform(get("/api/v1/auth/oidc/login")).andExpect(status().isNotFound());
+	}
+
+	@Test
 	void il_login_con_credenziali_corrette_restituisce_il_token_di_accesso_nel_corpo() throws Exception {
 		mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
 			.content(loginBody("admin", ADMIN_PASSWORD)))

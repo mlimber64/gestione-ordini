@@ -1,4 +1,4 @@
-import { credentials, baseUrl, connectUrl } from './tests/support/api';
+import { accessTokenFor, baseUrl, connectUrl } from './tests/support/api';
 
 const TIMEOUT_MS = 5 * 60_000;
 
@@ -25,12 +25,10 @@ async function waitUntil(description: string, check: () => Promise<string | null
  */
 export default async function globalSetup(): Promise<void> {
   await waitUntil(`Lo stack su ${baseUrl}`, async () => {
-    const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(credentials),
-    });
-    return response.ok ? null : `login -> ${response.status}`;
+    // Dal login si vede che servizi (e, con Keycloak, il provider) rispondono e che le credenziali di prova valgono
+    await accessTokenFor();
+    const health = await fetch(`${baseUrl}/api/v1/auth/config`);
+    return health.ok ? null : `config -> ${health.status}`;
   });
 
   if (connectUrl) {

@@ -1,0 +1,119 @@
+{
+  "realm": "gestione-ordini",
+  "displayName": "Gestione Ordini",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": false,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["it", "en"],
+  "defaultLocale": "it",
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 604800,
+  "ssoSessionMaxLifespan": 604800,
+  "roles": {
+    "realm": [
+      { "name": "ADMIN", "description": "Tutto, compresa la gestione degli utenti" },
+      { "name": "OPERATOR", "description": "Gestisce clienti, ordini, magazzino e pagamenti" },
+      { "name": "VIEWER", "description": "Sola lettura" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "gestione-ordini",
+      "name": "Gestione Ordini",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "gestione-ordini-segreto-demo",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8080/api/v1/auth/oidc/callback",
+        "https://localhost:8443/api/v1/auth/oidc/callback"
+      ],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "ruoli",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "gestione-ordini-e2e",
+      "name": "Solo per i test di punta a punta (login con password)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "ruoli",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Amministratore",
+      "lastName": "Demo",
+      "email": "admin@gestione-ordini.local",
+      "credentials": [{ "type": "password", "value": "admin-demo-1234", "temporary": false }],
+      "realmRoles": ["ADMIN"]
+    },
+    {
+      "username": "operatore",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Operatore",
+      "lastName": "Demo",
+      "email": "operatore@gestione-ordini.local",
+      "credentials": [{ "type": "password", "value": "operatore-demo-1234", "temporary": false }],
+      "realmRoles": ["OPERATOR"]
+    },
+    {
+      "username": "lettore",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Lettore",
+      "lastName": "Demo",
+      "email": "lettore@gestione-ordini.local",
+      "credentials": [{ "type": "password", "value": "lettore-demo-1234", "temporary": false }],
+      "realmRoles": ["VIEWER"]
+    }
+  ]
+}

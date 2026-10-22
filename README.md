@@ -36,6 +36,12 @@ Di base gli eventi arrivano a Kafka con un relay che interroga la tabella `outbo
 docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.cdc.yml --profile app up -d --build
 ```
 
+Di base l'accesso è un login interno con JWT. In alternativa si può delegarlo a **Keycloak** (OpenID Connect, Authorization Code con PKCE): l'utente digita la password nella pagina di Keycloak, che risponde sullo stesso indirizzo sotto `/auth`, e i servizi verificano i token con le sue chiavi pubbliche. Utenti di prova: `admin` / `operatore` / `lettore`, con password `admin-demo-1234`, `operatore-demo-1234` e `lettore-demo-1234` ([ADR 0021](docs/adr/0021-keycloak-come-identity-provider-opzionale.md), con i limiti della dimostrazione):
+
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.keycloak.yml --profile app up -d --build
+```
+
 Per aggiungere metriche e dashboard: `--profile observability`, poi Grafana su **http://localhost:3000**. Per spegnere tutto: `docker compose -f deploy/docker-compose.yml --profile app --profile observability down`.
 
 ## Cosa fa
@@ -109,6 +115,7 @@ flowchart LR
 | [0018](docs/adr/0018-pagamenti-registrati-a-mano.md) | Pagamenti registrati a mano |
 | [0019](docs/adr/0019-cdc-con-debezium.md) | CDC con Debezium al posto del polling dell'outbox |
 | [0020](docs/adr/0020-refresh-token-in-un-cookie-httponly.md) | Token di refresh in un cookie HttpOnly |
+| [0021](docs/adr/0021-keycloak-come-identity-provider-opzionale.md) | Keycloak come identity provider opzionale (OpenID Connect) |
 
 La qualità e le metriche sono descritte in [docs/qualita.md](docs/qualita.md).
 
@@ -164,6 +171,8 @@ Gli indirizzi e le credenziali si cambiano con `E2E_BASE_URL`, `E2E_USER` ed `E2
 
 ```text
 POST /api/v1/auth/login | refresh | logout        il token di refresh sta in un cookie HttpOnly (ADR 0020)
+GET  /api/v1/auth/config                          come si accede: local o oidc (Keycloak, ADR 0021)
+GET  /api/v1/auth/oidc/login | callback           accesso con Keycloak (solo in modalità oidc)
 POST /api/v1/inventory/{productId}/receipts       carico merce
 POST /api/v1/inventory/{productId}/adjustments    rettifica (anche negativa, con motivo)
 GET  /api/v1/inventory?lowStock=true              prodotti sotto scorta
@@ -185,8 +194,10 @@ I valori predefiniti servono **solo a provare l'applicazione sul proprio compute
 | Variabile | Significato | Obbligatoria fuori da `dev` |
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | Profilo attivo (`dev` è il predefinito in locale) | sì |
-| `JWT_SECRET` | Segreto di firma dei JWT, almeno 32 byte; lo stesso per i due servizi | sì |
-| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Amministratore creato al primo avvio | `ADMIN_PASSWORD` sì |
+| `AUTH_MODE` | `local` (login interno, di base) oppure `oidc` (Keycloak: `docker-compose.keycloak.yml`) | no |
+| `JWT_SECRET` | Segreto di firma dei JWT, almeno 32 byte; lo stesso per i due servizi (solo con `AUTH_MODE=local`) | sì |
+| `OIDC_ISSUER`, `OIDC_INTERNAL_URI`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Realm di Keycloak (indirizzo pubblico e interno) e client di order-service | solo con `oidc` |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Amministratore creato al primo avvio (solo con `AUTH_MODE=local`) | `ADMIN_PASSWORD` sì |
 | `DB_URL`, `DB_USER`, `DB_PASSWORD`, `R2DBC_URL` | Connessione a PostgreSQL | no |
 | `KAFKA_BOOTSTRAP_SERVERS` | Indirizzo di Kafka | no |
 
