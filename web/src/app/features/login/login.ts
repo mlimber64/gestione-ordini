@@ -22,9 +22,22 @@ import { AuthConfig } from '../../core/models';
   ],
   template: `
     <div class="wrap">
-      <form class="card box" [formGroup]="form" (ngSubmit)="submit()">
-        <div class="brand"><mat-icon>inventory_2</mat-icon><span>Gestione Ordini</span></div>
-        <p class="muted">Accedi per gestire clienti, magazzino e ordini.</p>
+      <aside class="hero" aria-hidden="true">
+        <div class="hero-brand"><span class="mark"><mat-icon>inventory_2</mat-icon></span>Gestione Ordini</div>
+        <div class="hero-copy">
+          <h2>Ordini, magazzino e pagamenti in un solo posto.</h2>
+          <ul>
+            <li><mat-icon>bolt</mat-icon>Giacenze riservate in modo atomico alla conferma</li>
+            <li><mat-icon>notifications_active</mat-icon>Notifiche in diretta su ogni cambio di stato</li>
+            <li><mat-icon>payments</mat-icon>Acconti, saldi e rimborsi sempre quadrati</li>
+          </ul>
+        </div>
+      </aside>
+      <div class="panel">
+      <form class="box" [formGroup]="form" (ngSubmit)="submit()">
+        <div class="brand"><span class="mark"><mat-icon>inventory_2</mat-icon></span><span>Gestione Ordini</span></div>
+        <h1>Accedi</h1>
+        <p class="muted">Inserisci le tue credenziali per continuare.</p>
 
         @switch (mode()) {
           @case ('oidc') {
@@ -75,36 +88,113 @@ import { AuthConfig } from '../../core/models';
           }
         }
       </form>
+      </div>
     </div>
   `,
   styles: `
     .wrap {
       min-height: 100vh;
       display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      background: var(--app-canvas);
+    }
+    .hero {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 40px 56px;
+      color: #e8f4f5;
+      background:
+        radial-gradient(900px 500px at 10% -10%, rgb(92 209 220 / 28%), transparent 60%),
+        linear-gradient(160deg, #0f4a52, #0a2a30 70%);
+    }
+    .hero-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font: var(--mat-sys-title-medium);
+      font-weight: 600;
+    }
+    .hero-copy h2 {
+      margin: 0 0 24px;
+      max-width: 18ch;
+      font: var(--mat-sys-display-small);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      text-wrap: balance;
+    }
+    .hero-copy ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 14px;
+      color: #b9d5d9;
+    }
+    .hero-copy li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hero-copy li mat-icon {
+      color: #5cd1dc;
+    }
+    .panel {
+      display: grid;
       place-items: center;
-      padding: 16px;
-      background: var(--mat-sys-surface-container-low);
+      padding: 24px 16px;
     }
     .box {
       width: min(400px, 100%);
       display: flex;
       flex-direction: column;
       gap: 8px;
-      padding: 28px 28px 24px;
     }
-    .brand {
-      display: flex;
+    .mark {
+      flex: none;
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #1aa3b0, #0e6f78);
+      color: #fff;
+    }
+    .box .brand {
+      display: none;
       align-items: center;
       gap: 10px;
-      font: var(--mat-sys-title-large);
-      color: var(--mat-sys-primary);
+      margin-bottom: 16px;
+      font: var(--mat-sys-title-medium);
+      font-weight: 600;
+    }
+    h1 {
+      margin: 0;
+      font: var(--mat-sys-headline-medium);
+      font-weight: 600;
+      letter-spacing: -0.02em;
     }
     .muted {
-      margin: 0 0 12px;
+      margin: 0 0 16px;
     }
     .error {
       margin: 0;
       color: var(--mat-sys-error);
+    }
+    button[type='submit'],
+    a[mat-flat-button] {
+      height: 46px;
+    }
+    @media (max-width: 900px) {
+      .wrap {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .hero {
+        display: none;
+      }
+      .box .brand {
+        display: flex;
+      }
     }
   `,
 })

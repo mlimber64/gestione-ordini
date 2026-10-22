@@ -4,6 +4,9 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/); il versiona
 
 ## [Non rilasciato]
 
+### Modificato
+- **Interfaccia rinnovata** (ADR 0022, prima parte dell'incidenza #39): sistema di design con palette petrolio e token, tema chiaro, scuro o del sistema, menu laterale scuro comprimibile (cassetto sui telefoni), barra superiore con percorso e utente, accesso a due colonne e un nuovo cruscotto con fascia «da gestire», quote per stato, anello degli ordini, scorte con barre e attività con icone per tipo.
+
 ## [1.1.0] - 2026-10-22
 
 Novità principali: accesso con Keycloak e refresh in un cookie HttpOnly, CDC con Debezium, pagamenti, immagini pubblicate su GHCR, HTTPS con HTTP/2, pulizia delle notifiche e test di punta a punta con Playwright.
