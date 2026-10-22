@@ -33,4 +33,4 @@ Quando un ordine cambia, altri servizi devono saperlo. Pubblicare su Kafka diret
 
 - Se Kafka è irraggiungibile, gli ordini continuano a funzionare: gli eventi si accumulano e partono al ritorno. Il contatore `outbox.events.pending` lo rende visibile in Prometheus.
 - Gli eventi arrivano con un piccolo ritardo (intervallo di polling, un secondo di default).
-- Il polling costa una query a vuoto al secondo; è accettabile a questa scala. Con volumi molto più alti si passerebbe a CDC (per esempio Debezium).
+- Il polling costa una query a vuoto al secondo; è accettabile a questa scala. Con volumi molto più alti si può passare a CDC con Debezium, che il progetto supporta in alternativa e senza cambiare il contratto degli eventi (ADR 0019).

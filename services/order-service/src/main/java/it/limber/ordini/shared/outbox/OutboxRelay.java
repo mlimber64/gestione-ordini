@@ -29,9 +29,10 @@ import java.util.concurrent.TimeUnit;
  * segno, l'evento viene reinviato: la garanzia è "almeno una volta", per questo i consumer sono idempotenti.</li>
  * <li>Al primo errore il lotto si ferma, così un evento non supera mai quelli che lo precedono.</li>
  * </ul>
+ * Esiste solo con {@code app.outbox.mode=polling} (il valore di base): con {@code cdc} gli eventi li porta Debezium.
  */
 @Component
-@ConditionalOnProperty(name = "app.outbox.relay.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "app.outbox.mode", havingValue = "polling", matchIfMissing = true)
 class OutboxRelay {
 
 	private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
@@ -123,15 +124,6 @@ class OutboxRelay {
 		message.headers().add("event-id", event.id().toString().getBytes(StandardCharsets.UTF_8));
 		message.headers().add("event-type", event.type().getBytes(StandardCharsets.UTF_8));
 		return message;
-	}
-
-	/** Elimina gli eventi già pubblicati da più di una settimana: la tabella non cresce all'infinito. */
-	@Scheduled(cron = "${app.outbox.cleanup-cron:0 30 3 * * *}")
-	void cleanUp() {
-		int deleted = jdbc.sql("DELETE FROM orders.outbox_event WHERE published_at < now() - interval '7 days'").update();
-		if (deleted > 0) {
-			log.info("Eliminati {} eventi outbox già pubblicati", deleted);
-		}
 	}
 
 	private double pendingCount() {

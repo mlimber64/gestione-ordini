@@ -49,9 +49,10 @@ app:
       username: ${ADMIN_USERNAME:admin}
       password: ${ADMIN_PASSWORD:}
   outbox:
+    # polling: un relay dell'applicazione porta gli eventi a Kafka. cdc: li porta Debezium (profilo cdc del compose, ADR 0019)
+    mode: ${OUTBOX_MODE:polling}
     cleanup-cron: "0 30 3 * * *"
     relay:
-      enabled: true
       poll-interval: 1s
       batch-size: 50
       send-timeout-seconds: 10

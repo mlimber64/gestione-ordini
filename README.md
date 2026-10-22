@@ -30,6 +30,12 @@ Senza compilare nulla: dalle versioni successive alla 1.0.0 le immagini si pubbl
 docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.ghcr.yml --profile app up -d
 ```
 
+Di base gli eventi arrivano a Kafka con un relay che interroga la tabella `outbox_event`. In alternativa si può leggere il log di PostgreSQL con **Debezium** (CDC): meno latenza e nessuna query a vuoto, al prezzo di un componente in più (Kafka Connect). Il contratto degli eventi non cambia ([ADR 0019](docs/adr/0019-cdc-con-debezium.md), con la procedura per tornare indietro):
+
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.cdc.yml --profile app up -d --build
+```
+
 Per aggiungere metriche e dashboard: `--profile observability`, poi Grafana su **http://localhost:3000**. Per spegnere tutto: `docker compose -f deploy/docker-compose.yml --profile app --profile observability down`.
 
 ## Cosa fa
@@ -101,6 +107,7 @@ flowchart LR
 | [0016](docs/adr/0016-conservazione-delle-notifiche.md) | Conservazione delle notifiche |
 | [0017](docs/adr/0017-immagini-pubblicate-su-ghcr.md) | Immagini Docker pubblicate su GHCR |
 | [0018](docs/adr/0018-pagamenti-registrati-a-mano.md) | Pagamenti registrati a mano |
+| [0019](docs/adr/0019-cdc-con-debezium.md) | CDC con Debezium al posto del polling dell'outbox |
 
 La qualità e le metriche sono descritte in [docs/qualita.md](docs/qualita.md).
 
@@ -133,6 +140,7 @@ In questa modalità l'utente è `admin` / `admin-dev-1234`.
 | PostgreSQL | 15432 |
 | Kafka | 19092 |
 | Prometheus, Grafana (Docker) | 9090, 3000 |
+| Kafka Connect (Docker, solo con CDC) | 8083, solo su localhost |
 
 I test usano Testcontainers: richiedono solo Docker in esecuzione. `./mvnw verify` esegue anche il controllo di copertura minima.
 
