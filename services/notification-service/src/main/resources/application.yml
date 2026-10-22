@@ -40,6 +40,9 @@ app:
   notifications:
     heartbeat: 25s
     replay-limit: 500
+    # Conservazione: più lunga dei 7 giorni di Kafka, altrimenti un evento riletto diventerebbe un duplicato (ADR 0016)
+    retention: 30d
+    cleanup-cron: "0 45 3 * * *"
 
 server:
   port: ${SERVER_PORT:8082}

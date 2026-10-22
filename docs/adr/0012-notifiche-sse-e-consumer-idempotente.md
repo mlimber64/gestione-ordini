@@ -28,4 +28,5 @@ L'interfaccia deve mostrare gli ordini e gli avvisi di scorta bassa appena accad
 - Un client lento perde le notifiche più vecchie del suo buffer (1000) invece di bloccare gli altri; al ricollegamento le recupera con `Last-Event-ID`.
 - L'ordine di arrivo vale per topic: eventi di topic diversi (per esempio scorta bassa e cambio di stato) possono arrivare in ordine diverso da quello in cui sono accaduti. `occurredAt` conserva l'ora reale.
 - Il segreto JWT è condiviso tra i due servizi. Con un identity provider esterno (ADR 0009) si passerebbe a chiavi pubbliche.
+- Le notifiche non restano per sempre: una pulizia notturna elimina quelle più vecchie di 30 giorni, oltre la conservazione di Kafka per non rompere l'idempotenza (ADR 0016).
 - Il browser non può usare `EventSource` nativo; in sviluppo il frontend passa da un proxy per evitare problemi di CORS.

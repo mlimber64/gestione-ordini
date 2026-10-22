@@ -3,6 +3,7 @@ package it.limber.notification;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import io.micrometer.core.instrument.MeterRegistry;
 import it.limber.notification.notification.Notification;
+import it.limber.notification.notification.NotificationRetention;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -14,6 +15,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -63,6 +65,12 @@ class NotificationFlowIntegrationTest {
 
 	@Autowired
 	private MeterRegistry metrics;
+
+	@Autowired
+	private DatabaseClient database;
+
+	@Autowired
+	private NotificationRetention retention;
 
 	private WebTestClient client() {
 		return WebTestClient.bindToServer()
@@ -268,6 +276,37 @@ class NotificationFlowIntegrationTest {
 
 		assertThat(received).extracting(event -> event.data().title())
 			.containsExactly("Nuovo ordine ORD-B", "Nuovo ordine ORD-C");
+	}
+
+	@Test
+	void la_pulizia_elimina_le_notifiche_oltre_il_periodo_di_conservazione_e_lascia_le_altre() {
+		String aggregateId = UUID.randomUUID().toString();
+		insertReceivedDaysAgo(aggregateId, 45);
+		insertReceivedDaysAgo(aggregateId, 31);
+		insertReceivedDaysAgo(aggregateId, 29);
+		insertReceivedDaysAgo(aggregateId, 0);
+
+		Long deleted = retention.cleanUp().block(Duration.ofSeconds(30));
+
+		assertThat(deleted).isGreaterThanOrEqualTo(2);
+		assertThat(history().stream().filter(n -> aggregateId.equals(n.aggregateId())))
+			.hasSize(2)
+			.allSatisfy(n -> assertThat(n.receivedAt()).isAfter(Instant.now().minus(Duration.ofDays(30))));
+	}
+
+	private void insertReceivedDaysAgo(String aggregateId, int days) {
+		database.sql("""
+				INSERT INTO notifications.notification_event
+				    (event_id, event_type, topic, aggregate_id, severity, title, message, data, occurred_at, received_at)
+				VALUES (:eventId, 'OrderCreated', :topic, :aggregateId, 'INFO', 'Vecchia', 'Vecchia', '{}'::jsonb,
+				        :receivedAt, :receivedAt)""")
+			.bind("eventId", UUID.randomUUID())
+			.bind("topic", ORDER_CREATED)
+			.bind("aggregateId", aggregateId)
+			.bind("receivedAt", Instant.now().minus(Duration.ofDays(days)))
+			.fetch()
+			.rowsUpdated()
+			.block(Duration.ofSeconds(10));
 	}
 
 	@Test

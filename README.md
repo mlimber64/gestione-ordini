@@ -89,6 +89,7 @@ flowchart LR
 | [0013](docs/adr/0013-frontend-angular-material.md) | Frontend Angular con Material, sessione in memoria e SSE con fetch |
 | [0014](docs/adr/0014-consegna-e-osservabilita.md) | Consegna con Docker, metriche e controlli di qualità |
 | [0015](docs/adr/0015-https-e-http2-davanti-al-frontend.md) | HTTPS e HTTP/2 davanti al frontend |
+| [0016](docs/adr/0016-conservazione-delle-notifiche.md) | Conservazione delle notifiche |
 
 La qualità e le metriche sono descritte in [docs/qualita.md](docs/qualita.md).
 
@@ -165,6 +166,8 @@ I valori predefiniti servono **solo a provare l'applicazione sul proprio compute
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Amministratore creato al primo avvio | `ADMIN_PASSWORD` sì |
 | `DB_URL`, `DB_USER`, `DB_PASSWORD`, `R2DBC_URL` | Connessione a PostgreSQL | no |
 | `KAFKA_BOOTSTRAP_SERVERS` | Indirizzo di Kafka | no |
+
+Le notifiche vecchie si eliminano ogni notte: restano 30 giorni di base (`APP_NOTIFICATIONS_RETENTION`, per esempio `45d`; deve restare più lungo della conservazione di Kafka, vedi [ADR 0016](docs/adr/0016-conservazione-delle-notifiche.md)).
 
 Con Docker si impostano in `deploy/.env` (vedi `deploy/.env.example`). Le metriche (`/actuator/prometheus`) non contengono dati sensibili ma non vanno esposte: il reverse proxy inoltra solo `/api` e le porte dei servizi non sono pubblicate.
 

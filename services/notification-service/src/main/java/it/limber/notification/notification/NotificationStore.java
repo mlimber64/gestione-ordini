@@ -79,6 +79,14 @@ public class NotificationStore {
 			.all();
 	}
 
+	/** Elimina le notifiche ricevute prima di {@code cutoff} e restituisce quante sono state tolte. */
+	public Mono<Long> deleteReceivedBefore(Instant cutoff) {
+		return db.sql("DELETE FROM notifications.notification_event WHERE received_at < :cutoff")
+			.bind("cutoff", cutoff)
+			.fetch()
+			.rowsUpdated();
+	}
+
 	private Notification map(Readable row) {
 		return new Notification(row.get("id", Long.class), row.get("event_id", UUID.class),
 				row.get("event_type", String.class), row.get("aggregate_id", String.class),
