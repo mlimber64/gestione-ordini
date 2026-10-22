@@ -2,14 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
-import { Role, TokenPair } from './models';
+import { AccessToken, Role } from './models';
 
 export interface SessionUser {
   username: string;
   roles: Role[];
 }
-
-const REFRESH_KEY = 'gestione-ordini.refresh';
 
 /** Legge il contenuto del JWT. Serve solo a mostrare l'utente e nascondere i comandi: i permessi veri li applica il server. */
 export function decodeUser(token: string | null): SessionUser | null {
@@ -24,8 +22,10 @@ export function decodeUser(token: string | null): SessionUser | null {
 }
 
 /**
- * Sessione dell'utente. Il token di accesso (15 minuti) vive solo in memoria; quello di refresh in sessionStorage,
- * così un ricaricamento della pagina non obbliga a rifare il login ma chiudere la scheda sì.
+ * Sessione dell'utente. Il token di accesso (15 minuti) vive solo in memoria. Quello di refresh sta in un cookie
+ * HttpOnly che il server imposta e il browser rimanda da solo a /api/v1/auth: il codice della pagina non lo vede mai,
+ * quindi un XSS non può rubarlo. Il cookie dura quanto il browser aperto: un ricaricamento della pagina non obbliga
+ * a rifare il login, la chiusura del browser sì.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -48,15 +48,17 @@ export class AuthService {
   readonly isAdmin = computed(() => this.user()?.roles.includes('ADMIN') ?? false);
 
   login(username: string, password: string): Observable<void> {
-    return this.http.post<TokenPair>('/api/v1/auth/login', { username, password }).pipe(
-      tap((pair) => this.store(pair)),
+    return this.http.post<AccessToken>('/api/v1/auth/login', { username, password }).pipe(
+      tap((token) => this.accessToken.set(token.accessToken)),
       map(() => undefined),
     );
   }
 
-  /** All'avvio: se c'è un token di refresh della sessione, prova a ripristinare l'accesso. */
+  /**
+   * All'avvio: se il browser ha ancora il cookie di refresh della sessione, ottiene un token di accesso. Il cookie è
+   * HttpOnly, quindi la pagina non può sapere se c'è: lo si prova e, se manca o è scaduto, si resta senza accesso.
+   */
   restore(): Observable<boolean> {
-    if (!this.storedRefreshToken()) return of(false);
     return this.refresh().pipe(
       map(() => true),
       catchError(() => of(false)),
@@ -65,14 +67,12 @@ export class AuthService {
 
   /** Ottiene un nuovo token di accesso. Più richieste simultanee condividono un'unica chiamata. */
   refresh(): Observable<string> {
-    const refreshToken = this.storedRefreshToken();
-    if (!refreshToken) return throwError(() => new Error('Nessuna sessione'));
     if (!this.inFlightRefresh) {
-      this.inFlightRefresh = this.http.post<TokenPair>('/api/v1/auth/refresh', { refreshToken }).pipe(
-        tap((pair) => this.store(pair)),
-        map((pair) => pair.accessToken),
+      this.inFlightRefresh = this.http.post<AccessToken>('/api/v1/auth/refresh', null).pipe(
+        tap((token) => this.accessToken.set(token.accessToken)),
+        map((token) => token.accessToken),
         catchError((error) => {
-          this.clear();
+          this.accessToken.set(null);
           return throwError(() => error);
         }),
         finalize(() => (this.inFlightRefresh = null)),
@@ -82,34 +82,11 @@ export class AuthService {
     return this.inFlightRefresh;
   }
 
+  /** Chiude la sessione: toglie il token dalla memoria e chiede al server di eliminare il cookie. */
   logout(redirect = true): void {
-    this.clear();
-    if (redirect) void this.router.navigate(['/login']);
-  }
-
-  private store(pair: TokenPair): void {
-    this.accessToken.set(pair.accessToken);
-    try {
-      sessionStorage.setItem(REFRESH_KEY, pair.refreshToken);
-    } catch {
-      // sessionStorage non disponibile (modalità privata): la sessione dura finché la pagina resta aperta
-    }
-  }
-
-  private clear(): void {
     this.accessToken.set(null);
-    try {
-      sessionStorage.removeItem(REFRESH_KEY);
-    } catch {
-      // niente da fare
-    }
-  }
-
-  private storedRefreshToken(): string | null {
-    try {
-      return sessionStorage.getItem(REFRESH_KEY);
-    } catch {
-      return null;
-    }
+    // Se la chiamata fallisce il cookie resta, ma scade con il browser e senza token di accesso non serve a nulla
+    this.http.post<void>('/api/v1/auth/logout', null).subscribe({ error: () => undefined });
+    if (redirect) void this.router.navigate(['/login']);
   }
 }

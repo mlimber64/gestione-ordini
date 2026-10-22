@@ -4,9 +4,12 @@ import com.jayway.jsonpath.JsonPath;
 import it.limber.ordini.ApiTestSupport;
 import it.limber.ordini.IntegrationTest;
 import it.limber.ordini.identity.domain.Role;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -20,15 +23,53 @@ class AuthIntegrationTest extends ApiTestSupport {
 		return "{\"username\":\"%s\",\"password\":\"%s\"}".formatted(username, password);
 	}
 
+	private static final String REFRESH_COOKIE = "gestione_ordini_refresh";
+
+	private MockHttpServletResponse login() throws Exception {
+		return mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+			.content(loginBody("admin", ADMIN_PASSWORD))).andReturn().getResponse();
+	}
+
+	private String refreshTokenOf(MockHttpServletResponse response) {
+		Cookie cookie = response.getCookie(REFRESH_COOKIE);
+		assertThat(cookie).isNotNull();
+		return cookie.getValue();
+	}
+
 	@Test
-	void il_login_con_credenziali_corrette_restituisce_i_token() throws Exception {
+	void il_login_con_credenziali_corrette_restituisce_il_token_di_accesso_nel_corpo() throws Exception {
 		mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
 			.content(loginBody("admin", ADMIN_PASSWORD)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.accessToken").isNotEmpty())
-			.andExpect(jsonPath("$.refreshToken").isNotEmpty())
 			.andExpect(jsonPath("$.tokenType").value("Bearer"))
 			.andExpect(jsonPath("$.expiresIn").value(900));
+	}
+
+	@Test
+	void il_token_di_refresh_non_compare_nel_corpo_ma_solo_in_un_cookie_http_only() throws Exception {
+		MockHttpServletResponse response = login();
+
+		assertThat(response.getContentAsString()).doesNotContain("refresh");
+		String cookie = response.getHeader("Set-Cookie");
+		assertThat(cookie).startsWith(REFRESH_COOKIE + "=")
+			.contains("HttpOnly")
+			.contains("SameSite=Strict")
+			.contains("Path=/api/v1/auth")
+			// Cookie «di sessione»: nessuna scadenza, si perde alla chiusura del browser
+			.doesNotContain("Max-Age")
+			.doesNotContain("Expires")
+			// La richiesta di prova è in HTTP: il flag Secure compare solo dietro HTTPS
+			.doesNotContain("Secure");
+	}
+
+	@Test
+	void dietro_https_il_cookie_e_anche_secure() throws Exception {
+		String cookie = mvc.perform(post("/api/v1/auth/login").secure(true)
+			.contentType(MediaType.APPLICATION_JSON)
+			.content(loginBody("admin", ADMIN_PASSWORD))).andReturn().getResponse().getHeader("Set-Cookie");
+
+		assertThat(cookie).contains("Secure").contains("HttpOnly");
 	}
 
 	@Test
@@ -72,34 +113,66 @@ class AuthIntegrationTest extends ApiTestSupport {
 
 	@Test
 	void il_token_di_refresh_non_vale_come_token_di_accesso() throws Exception {
-		String body = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-			.content(loginBody("admin", ADMIN_PASSWORD))).andReturn().getResponse().getContentAsString();
-		String refresh = JsonPath.read(body, "$.refreshToken");
+		String refresh = refreshTokenOf(login());
 
 		getJson("/api/v1/customers", refresh).andExpect(status().isUnauthorized());
 	}
 
 	@Test
-	void il_token_di_accesso_non_vale_come_token_di_refresh() throws Exception {
-		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON)
-			.content("{\"refreshToken\":\"%s\"}".formatted(adminToken()))).andExpect(status().isUnauthorized());
+	void il_token_di_accesso_non_vale_come_token_di_refresh_e_il_cookie_si_toglie() throws Exception {
+		MockHttpServletResponse response = mvc
+			.perform(post("/api/v1/auth/refresh").cookie(new Cookie(REFRESH_COOKIE, adminToken())))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.title").value("Autenticazione non riuscita"))
+			.andReturn()
+			.getResponse();
+
+		assertThat(response.getHeader("Set-Cookie")).contains(REFRESH_COOKIE + "=").contains("Max-Age=0");
 	}
 
 	@Test
-	void il_refresh_con_token_valido_emette_nuovi_token() throws Exception {
-		String body = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-			.content(loginBody("admin", ADMIN_PASSWORD))).andReturn().getResponse().getContentAsString();
-		String refresh = JsonPath.read(body, "$.refreshToken");
+	void il_refresh_senza_cookie_restituisce_401() throws Exception {
+		mvc.perform(post("/api/v1/auth/refresh"))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.status").value(401));
+	}
 
-		String refreshed = mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON)
-			.content("{\"refreshToken\":\"%s\"}".formatted(refresh)))
+	@Test
+	void il_refresh_con_il_cookie_valido_emette_un_nuovo_accesso_e_ruota_il_cookie() throws Exception {
+		String refresh = refreshTokenOf(login());
+
+		MockHttpServletResponse refreshed = mvc
+			.perform(post("/api/v1/auth/refresh").cookie(new Cookie(REFRESH_COOKIE, refresh)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.accessToken").isNotEmpty())
+			.andExpect(jsonPath("$.refreshToken").doesNotExist())
 			.andReturn()
-			.getResponse()
-			.getContentAsString();
+			.getResponse();
 
-		getJson("/api/v1/customers", JsonPath.read(refreshed, "$.accessToken")).andExpect(status().isOk());
+		getJson("/api/v1/customers", JsonPath.read(refreshed.getContentAsString(), "$.accessToken"))
+			.andExpect(status().isOk());
+		// Il cookie nuovo ha gli stessi attributi di sicurezza
+		assertThat(refreshed.getHeader("Set-Cookie")).contains("HttpOnly").contains("SameSite=Strict");
+	}
+
+	@Test
+	void il_refresh_non_accetta_il_token_nel_corpo() throws Exception {
+		String refresh = refreshTokenOf(login());
+
+		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+			.content("{\"refreshToken\":\"%s\"}".formatted(refresh))).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void il_logout_toglie_il_cookie() throws Exception {
+		MockHttpServletResponse response = mvc.perform(post("/api/v1/auth/logout"))
+			.andExpect(status().isNoContent())
+			.andReturn()
+			.getResponse();
+
+		assertThat(response.getHeader("Set-Cookie")).startsWith(REFRESH_COOKIE + "=;")
+			.contains("Max-Age=0")
+			.contains("HttpOnly");
 	}
 
 	@Test

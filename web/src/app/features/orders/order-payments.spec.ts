@@ -40,7 +40,6 @@ describe('OrderPaymentsPanel', () => {
   const open = vi.fn();
 
   beforeEach(() => {
-    sessionStorage.clear();
     open.mockReset();
     TestBed.configureTestingModule({
       imports: [OrderPaymentsPanel],

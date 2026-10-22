@@ -59,6 +59,9 @@ app:
 
 server:
   port: ${SERVER_PORT:8081}
+  # Dietro nginx lo schema originale (http o https) arriva nell'intestazione X-Forwarded-Proto: serve al cookie Secure.
+  # Va bene perché le porte dei servizi non sono pubblicate: dall'esterno si arriva solo da nginx.
+  forward-headers-strategy: framework
 
 management:
   metrics:

@@ -13,7 +13,6 @@ describe('guardie di rotta', () => {
     TestBed.runInInjectionContext(() => guard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot));
 
   beforeEach(() => {
-    sessionStorage.clear();
     TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] });
     auth = TestBed.inject(AuthService);
   });

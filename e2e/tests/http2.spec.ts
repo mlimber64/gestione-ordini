@@ -13,8 +13,12 @@ test.describe('HTTPS con HTTP/2', () => {
     test.setTimeout(120_000);
     const pages = await Promise.all(Array.from({ length: SCHEDE }, () => context.newPage()));
 
-    // Ogni scheda ha la sua sessione (il token di refresh sta in sessionStorage) e il suo stream SSE
-    for (const page of pages) await login(page);
+    // Una scheda fa il login; le altre condividono il cookie di refresh e ripristinano la sessione da sole.
+    // Ognuna ha comunque il suo token di accesso e il suo stream SSE.
+    const [first, ...others] = pages;
+    await login(first);
+    await expect(first.getByText('In diretta', { exact: true })).toBeVisible();
+    await Promise.all(others.map((page) => page.goto('/')));
 
     for (const page of pages) await expect(page.getByText('In diretta', { exact: true })).toBeVisible();
   });

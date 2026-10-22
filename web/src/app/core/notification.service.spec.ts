@@ -37,7 +37,6 @@ describe('NotificationService', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    sessionStorage.clear();
     TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] });
     TestBed.inject(AuthService).accessToken.set(fakeJwt({ sub: 'anna', roles: ['VIEWER'] }));
     service = TestBed.inject(NotificationService);

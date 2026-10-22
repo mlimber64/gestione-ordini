@@ -29,7 +29,6 @@ describe('InventoryList', () => {
   let component: { act(action: StockAction, stock: Stock): void };
 
   beforeEach(() => {
-    sessionStorage.clear();
     open = vi.fn();
     TestBed.configureTestingModule({
       imports: [InventoryList],
