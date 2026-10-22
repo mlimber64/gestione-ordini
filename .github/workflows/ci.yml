@@ -75,10 +75,12 @@ jobs:
       - run: docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.ghcr.yml --profile app config --quiet
       # E quello con Debezium (CDC)
       - run: docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.cdc.yml --profile app config --quiet
+      # E quello con Keycloak
+      - run: docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.keycloak.yml --profile app config --quiet
 
   # Test di punta a punta nel browser (Playwright) sull'intera applicazione avviata con Docker Compose:
   # accesso, nuovo ordine, conferma e notifiche in diretta attraverso nginx, i due servizi, PostgreSQL e Kafka.
-  # Girano nei due modi in cui gli eventi arrivano a Kafka: polling dell'outbox (di base) e Debezium (ADR 0019).
+  # Girano in tre configurazioni: di base (polling dell'outbox e login interno), con Debezium (ADR 0019) e con Keycloak (ADR 0021).
   e2e:
     name: e2e (${{ matrix.mode }})
     runs-on: ubuntu-latest
@@ -86,9 +88,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [polling, cdc]
+        mode: [polling, cdc, oidc]
     env:
-      COMPOSE: docker compose -f deploy/docker-compose.yml ${{ matrix.mode == 'cdc' && '-f deploy/docker-compose.cdc.yml' || '' }} --profile app
+      COMPOSE: docker compose -f deploy/docker-compose.yml ${{ matrix.mode == 'cdc' && '-f deploy/docker-compose.cdc.yml' || '' }} ${{ matrix.mode == 'oidc' && '-f deploy/docker-compose.keycloak.yml' || '' }} --profile app
+      # Con oidc l'accesso passa dalla pagina di Keycloak
+      E2E_AUTH: ${{ matrix.mode == 'oidc' && 'oidc' || 'local' }}
       # Con cdc il global setup aspetta anche che il connettore Debezium sia in esecuzione
       E2E_CONNECT_URL: ${{ matrix.mode == 'cdc' && 'http://localhost:8083' || '' }}
     defaults:

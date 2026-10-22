@@ -9,7 +9,7 @@ import org.testcontainers.utility.DockerImageName;
 
 /** PostgreSQL e Kafka reali per i test di integrazione, nelle stesse versioni di Docker Compose. */
 @TestConfiguration(proxyBeanMethods = false)
-class TestcontainersConfiguration {
+public class TestcontainersConfiguration {
 
 	@Bean
 	@ServiceConnection

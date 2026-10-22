@@ -2,12 +2,14 @@ package it.limber.ordini.identity.application;
 
 import it.limber.ordini.identity.domain.AppUser;
 import it.limber.ordini.identity.domain.UserRepository;
+import it.limber.ordini.shared.auth.LocalAuth;
 import it.limber.ordini.shared.error.AuthenticationFailedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@LocalAuth
 public class AuthService {
 
 	private static final String INVALID_CREDENTIALS = "Credenziali non valide";

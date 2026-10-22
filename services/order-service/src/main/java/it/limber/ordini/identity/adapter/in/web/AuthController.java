@@ -2,6 +2,7 @@ package it.limber.ordini.identity.adapter.in.web;
 
 import it.limber.ordini.identity.application.AuthService;
 import it.limber.ordini.identity.application.TokenPair;
+import it.limber.ordini.shared.auth.LocalAuth;
 import it.limber.ordini.shared.error.AuthenticationFailedException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -9,7 +10,6 @@ import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,12 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
  * perde alla chiusura del browser. È {@code Secure} quando la richiesta arriva in HTTPS.
  */
 @RestController
+@LocalAuth
 @RequestMapping("/api/v1/auth")
 class AuthController {
-
-	static final String REFRESH_COOKIE = "gestione_ordini_refresh";
-
-	private static final String COOKIE_PATH = "/api/v1/auth";
 
 	record LoginRequest(@NotBlank String username, @NotBlank String password) {
 	}
@@ -59,7 +56,7 @@ class AuthController {
 
 	/** Rinnova la sessione con il token di refresh del cookie e ne mette nel cookie uno nuovo. */
 	@PostMapping("/refresh")
-	ResponseEntity<?> refresh(@CookieValue(name = REFRESH_COOKIE, required = false) String refreshToken,
+	ResponseEntity<?> refresh(@CookieValue(name = RefreshCookie.NAME, required = false) String refreshToken,
 			HttpServletRequest http) {
 		try {
 			return issued(auth.refresh(refreshToken == null ? "" : refreshToken), http);
@@ -69,7 +66,7 @@ class AuthController {
 			ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
 			problem.setTitle("Autenticazione non riuscita");
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-				.header(HttpHeaders.SET_COOKIE, cookie("", http).maxAge(0).build().toString())
+				.header(HttpHeaders.SET_COOKIE, RefreshCookie.clear(http))
 				.body(problem);
 		}
 	}
@@ -78,22 +75,14 @@ class AuthController {
 	@PostMapping("/logout")
 	ResponseEntity<Void> logout(HttpServletRequest http) {
 		return ResponseEntity.noContent()
-			.header(HttpHeaders.SET_COOKIE, cookie("", http).maxAge(0).build().toString())
+			.header(HttpHeaders.SET_COOKIE, RefreshCookie.clear(http))
 			.build();
 	}
 
 	private static ResponseEntity<AccessTokenResponse> issued(TokenPair pair, HttpServletRequest http) {
 		return ResponseEntity.ok()
-			.header(HttpHeaders.SET_COOKIE, cookie(pair.refreshToken(), http).build().toString())
+			.header(HttpHeaders.SET_COOKIE, RefreshCookie.set(pair.refreshToken(), http))
 			.body(AccessTokenResponse.of(pair));
-	}
-
-	private static ResponseCookie.ResponseCookieBuilder cookie(String value, HttpServletRequest http) {
-		return ResponseCookie.from(REFRESH_COOKIE, value)
-			.httpOnly(true)
-			.secure(http.isSecure())
-			.sameSite("Strict")
-			.path(COOKIE_PATH);
 	}
 
 }

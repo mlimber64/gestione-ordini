@@ -1,0 +1,62 @@
+# Autenticazione con Keycloak al posto del login interno di order-service (ADR 0021).
+# Si combina con il compose principale:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.keycloak.yml --profile app up -d --build
+#
+# Keycloak risponde sullo stesso indirizzo dell'applicazione, sotto /auth (nginx lo inoltra), quindi il browser
+# vede un'unica origine. Gli utenti di prova sono nel realm importato (deploy/keycloak/realm-gestione-ordini.json):
+# admin / operatore / lettore, con le password `*-demo-1234`. Order-service e notification-service smettono di
+# emettere e verificare token con il segreto condiviso e usano le chiavi pubbliche del realm (JWKS).
+#
+# Keycloak parte in modalità di sviluppo (`start-dev`: database interno, senza HTTPS): va bene per provare
+# l'integrazione, non per la produzione. Il segreto del client e le password qui sotto sono SOLO per la demo.
+# Il login passa dall'indirizzo pubblico (WEB_PORT, 8080 di base): se cambi porta aggiorna anche gli URI di
+# ritorno del client nel realm.
+services:
+  keycloak:
+    profiles: [app]
+    image: quay.io/keycloak/keycloak:26.8.1
+    container_name: gestione-ordini-keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin-demo-1234}
+      # Sotto /auth, dietro nginx. L'indirizzo pubblico è fisso (è quello che finisce nel claim iss dei token);
+      # le chiamate tra servizi (keycloak:8080) restano valide perché il backchannel è dinamico.
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_HOSTNAME: http://localhost:${WEB_PORT:-8080}/auth
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak/realm-gestione-ordini.json:/opt/keycloak/data/import/realm-gestione-ordini.json:ro
+    # Nessuna porta pubblicata: si raggiunge solo attraverso nginx (http://localhost:8080/auth)
+    healthcheck:
+      # L'immagine non ha curl: si apre la porta di gestione con bash
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /auth/health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && grep -q '\"status\": \"UP\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: on-failure
+
+  order-service:
+    environment:
+      AUTH_MODE: oidc
+      OIDC_ISSUER: http://localhost:${WEB_PORT:-8080}/auth/realms/gestione-ordini
+      OIDC_INTERNAL_URI: http://keycloak:8080/auth/realms/gestione-ordini
+      OIDC_CLIENT_ID: gestione-ordini
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-gestione-ordini-segreto-demo}
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  notification-service:
+    environment:
+      AUTH_MODE: oidc
+      OIDC_ISSUER: http://localhost:${WEB_PORT:-8080}/auth/realms/gestione-ordini
+      OIDC_INTERNAL_URI: http://keycloak:8080/auth/realms/gestione-ordini
+    depends_on:
+      keycloak:
+        condition: service_healthy

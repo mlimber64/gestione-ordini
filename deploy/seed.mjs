@@ -1,6 +1,7 @@
 // Carica dati di esempio tramite l'API, così l'applicazione si prova subito con qualcosa da vedere.
 // Uso (Node 18 o successivo):  node deploy/seed.mjs [URL] [utente] [password]
 // Predefiniti: http://localhost:8080, admin, admin-demo-1234 (stack Docker; in sviluppo locale usare http://localhost:8081 e admin-dev-1234).
+// Con Keycloak (docker-compose.keycloak.yml) rileva da solo la modalità e prende il token dal client di test del realm, che ammette la password.
 // Si può rilanciare: se il catalogo di esempio esiste già, non fa nulla.
 
 const [base = 'http://localhost:8080', username = 'admin', password = 'admin-demo-1234'] = process.argv.slice(2);
@@ -30,7 +31,19 @@ function vatNumber(seed) {
   return digits.join('') + ((10 - (sum % 10)) % 10);
 }
 
-const { accessToken: token } = await call('/api/v1/auth/login', 'POST', { username, password });
+async function accessToken() {
+  const config = await call('/api/v1/auth/config').catch(() => ({ mode: 'local' }));
+  if (config.mode !== 'oidc') return (await call('/api/v1/auth/login', 'POST', { username, password })).accessToken;
+  const response = await fetch(`${base}/auth/realms/gestione-ordini/protocol/openid-connect/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'password', client_id: 'gestione-ordini-e2e', username, password }),
+  });
+  if (!response.ok) throw new Error(`token Keycloak -> ${response.status}: ${await response.text()}`);
+  return (await response.json()).access_token;
+}
+
+const token = await accessToken();
 const api = (path, method, body) => call(path, method, body, token);
 
 const existing = await api('/api/v1/products?q=CAN-001');

@@ -13,20 +13,18 @@ public record SecurityProperties(Jwt jwt, BootstrapAdmin bootstrapAdmin) {
 
 	public record Jwt(String secret, String issuer, Duration accessTtl, Duration refreshTtl) {
 
-		public Jwt {
-			if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
-				throw new IllegalStateException(
-						"app.security.jwt.secret (variabile JWT_SECRET) deve avere almeno 32 byte");
-			}
-		}
-
 	}
 
 	/** Se la password è vuota l'amministratore non viene creato. */
 	public record BootstrapAdmin(String username, String password) {
 	}
 
+	/** Chiave HS256. Serve solo in modalità locale: con Keycloak non c'è nessun segreto condiviso. */
 	public SecretKey jwtKey() {
+		if (jwt.secret() == null || jwt.secret().getBytes(StandardCharsets.UTF_8).length < 32) {
+			throw new IllegalStateException(
+					"app.security.jwt.secret (variabile JWT_SECRET) deve avere almeno 32 byte");
+		}
 		return new SecretKeySpec(jwt.secret().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
 	}
 

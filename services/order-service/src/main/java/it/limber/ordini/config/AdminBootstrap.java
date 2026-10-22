@@ -3,6 +3,7 @@ package it.limber.ordini.config;
 import it.limber.ordini.identity.application.UserService;
 import it.limber.ordini.identity.application.UserService.CreateUserCommand;
 import it.limber.ordini.identity.domain.Role;
+import it.limber.ordini.shared.auth.LocalAuth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 /** Alla prima esecuzione crea l'amministratore iniziale, ma solo se è stata configurata una password. */
 @Component
+@LocalAuth
 class AdminBootstrap implements ApplicationRunner {
 
 	private static final Logger log = LoggerFactory.getLogger(AdminBootstrap.class);

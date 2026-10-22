@@ -39,6 +39,15 @@ spring:
       enabled: true
 
 app:
+  auth:
+    # local: order-service gestisce utenti e token (HS256). oidc: li gestisce Keycloak e qui si verificano i suoi token (ADR 0021)
+    mode: ${AUTH_MODE:local}
+    oidc:
+      # Indirizzo pubblico del realm (compare nel claim iss) e indirizzo interno per le chiamate tra servizi
+      issuer: ${OIDC_ISSUER:http://localhost:8080/auth/realms/gestione-ordini}
+      internal-uri: ${OIDC_INTERNAL_URI:}
+      client-id: ${OIDC_CLIENT_ID:gestione-ordini}
+      client-secret: ${OIDC_CLIENT_SECRET:}
   security:
     jwt:
       secret: ${JWT_SECRET:}

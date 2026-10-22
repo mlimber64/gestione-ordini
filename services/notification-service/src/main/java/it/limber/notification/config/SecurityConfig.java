@@ -1,5 +1,6 @@
 package it.limber.notification.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +26,7 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
  */
 @Configuration(proxyBeanMethods = false)
 @EnableWebFluxSecurity
-@EnableConfigurationProperties(SecurityProperties.class)
+@EnableConfigurationProperties({ SecurityProperties.class, AuthProperties.class })
 class SecurityConfig {
 
 	private static final String TOKEN_USE_CLAIM = "token_use";
@@ -35,12 +36,30 @@ class SecurityConfig {
 	private static final String ROLES_CLAIM = "roles";
 
 	@Bean
+	@ConditionalOnProperty(name = "app.auth.mode", havingValue = "local", matchIfMissing = true)
 	ReactiveJwtDecoder jwtDecoder(SecurityProperties properties) {
 		NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder.withSecretKey(properties.jwtKey())
 			.macAlgorithm(MacAlgorithm.HS256)
 			.build();
 		decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
 				JwtValidators.createDefaultWithIssuer(properties.jwt().issuer()), accessTokensOnly()));
+		return decoder;
+	}
+
+	/**
+	 * Con Keycloak i token si verificano con le chiavi pubbliche del realm (JWKS, scaricate al primo uso: il servizio
+	 * parte anche se Keycloak non è ancora pronto). Si controlla l'emittente e che sia un token di accesso
+	 * ({@code typ=Bearer}), perché Keycloak firma con la stessa chiave anche i token di refresh.
+	 */
+	@Bean
+	@ConditionalOnProperty(name = "app.auth.mode", havingValue = "oidc")
+	ReactiveJwtDecoder oidcJwtDecoder(AuthProperties properties) {
+		AuthProperties.Oidc oidc = properties.oidc();
+		NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder
+			.withJwkSetUri(oidc.backchannel() + "/protocol/openid-connect/certs")
+			.build();
+		decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefaultWithIssuer(oidc.issuer()),
+				bearerTokensOnly()));
 		return decoder;
 	}
 
@@ -63,6 +82,11 @@ class SecurityConfig {
 				.jwt(jwt -> jwt.jwtDecoder(decoder)
 					.jwtAuthenticationConverter(new ReactiveJwtAuthenticationConverterAdapter(converter))))
 			.build();
+	}
+
+	private static OAuth2TokenValidator<Jwt> bearerTokensOnly() {
+		return jwt -> "Bearer".equals(jwt.getClaimAsString("typ")) ? OAuth2TokenValidatorResult.success()
+				: OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Tipo di token non valido", null));
 	}
 
 	private static OAuth2TokenValidator<Jwt> accessTokensOnly() {

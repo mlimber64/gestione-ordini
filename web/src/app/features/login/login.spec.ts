@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { AuthConfig } from '../../core/models';
 import { fakeJwt } from '../../core/testing';
 import { Login } from './login';
 
@@ -16,8 +17,12 @@ describe('Login', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  function open() {
+  function open(mode: AuthConfig['mode'] | 'errore' = 'local') {
     const fixture = TestBed.createComponent(Login);
+    fixture.detectChanges();
+    const config = http.expectOne('/api/v1/auth/config');
+    if (mode === 'errore') config.error(new ProgressEvent('error'), { status: 500 });
+    else config.flush({ mode });
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     const type = (selector: string, value: string) => {
@@ -78,5 +83,28 @@ describe('Login', () => {
     fixture.detectChanges();
 
     expect(element.querySelector('.error')?.textContent).toContain('Impossibile contattare il server');
+  });
+
+  it('mentre non sa come autenticare mostra solo una barra di attesa', () => {
+    const fixture = TestBed.createComponent(Login);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('input')).toBeNull();
+    expect(element.querySelector('mat-progress-bar')).not.toBeNull();
+  });
+
+  it('se la configurazione non arriva mostra comunque il modulo di base', () => {
+    const { element } = open('errore');
+
+    expect(element.querySelector('input[formcontrolname=username]')).not.toBeNull();
+  });
+
+  it('con Keycloak mostra solo il pulsante che porta alla sua pagina di accesso', () => {
+    const { element } = open('oidc');
+
+    const link = element.querySelector<HTMLAnchorElement>('a[href="/api/v1/auth/oidc/login"]');
+    expect(link?.textContent).toContain('Accedi con Keycloak');
+    expect(element.querySelector('input')).toBeNull();
   });
 });

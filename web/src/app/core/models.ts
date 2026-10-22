@@ -220,3 +220,8 @@ export interface AppNotification {
   occurredAt: string;
   receivedAt: string;
 }
+
+/** Come autenticare l'utente: con il modulo dell'applicazione o con Keycloak (ADR 0021). */
+export interface AuthConfig {
+  mode: 'local' | 'oidc';
+}

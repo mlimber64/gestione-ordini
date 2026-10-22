@@ -33,6 +33,12 @@ spring:
       concurrency: 3
 
 app:
+  auth:
+    # local: i token sono quelli di order-service (HS256). oidc: li emette Keycloak (ADR 0021)
+    mode: ${AUTH_MODE:local}
+    oidc:
+      issuer: ${OIDC_ISSUER:http://localhost:8080/auth/realms/gestione-ordini}
+      internal-uri: ${OIDC_INTERNAL_URI:}
   security:
     jwt:
       secret: ${JWT_SECRET:}
