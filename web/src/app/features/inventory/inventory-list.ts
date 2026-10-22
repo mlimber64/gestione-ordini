@@ -8,7 +8,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
@@ -17,6 +16,8 @@ import { InventoryApi } from '../../core/api';
 import { AuthService } from '../../core/auth.service';
 import { errorMessage } from '../../core/errors';
 import { Stock } from '../../core/models';
+import { EmptyState } from '../../shared/empty-state';
+import { TableSkeleton } from '../../shared/table-skeleton';
 import { MovementsDialog } from './movements-dialog';
 import { StockAction, StockDialog, StockDialogData, StockDialogResult } from './stock-dialog';
 
@@ -32,33 +33,38 @@ import { StockAction, StockDialog, StockDialogData, StockDialogResult } from './
     MatIconModule,
     MatMenuModule,
     MatSlideToggleModule,
-    MatProgressBarModule,
+    EmptyState,
+    TableSkeleton,
   ],
   template: `
     <div class="page">
-      <div class="page-header"><h1>Magazzino</h1></div>
-
-      <div class="filters">
-        <mat-form-field>
-          <mat-label>Cerca per nome o SKU</mat-label>
-          <input matInput [formControl]="query" />
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
-        <mat-slide-toggle [formControl]="lowOnly">Solo scorte basse</mat-slide-toggle>
+      <div class="page-header">
+        <div class="page-title">
+          <h1>Magazzino</h1>
+          <p class="page-sub">{{ total() }} prodotti in totale</p>
+        </div>
       </div>
 
-      @if (loading()) {
-        <mat-progress-bar mode="indeterminate" />
-      }
       <div class="table-card">
+        <div class="toolbar">
+          <mat-form-field>
+            <mat-label>Cerca per nome o SKU</mat-label>
+            <input matInput [formControl]="query" />
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+          <mat-slide-toggle [formControl]="lowOnly">Solo scorte basse</mat-slide-toggle>
+        </div>
+        @if (loading() && rows().length === 0) {
+          <app-table-skeleton [cols]="7" />
+        }
         <table mat-table [dataSource]="rows()">
           <ng-container matColumnDef="sku">
             <th mat-header-cell *matHeaderCellDef>SKU</th>
-            <td mat-cell *matCellDef="let s">{{ s.sku }}</td>
+            <td mat-cell *matCellDef="let s" class="muted">{{ s.sku }}</td>
           </ng-container>
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef>Prodotto</th>
-            <td mat-cell *matCellDef="let s">{{ s.productName }}</td>
+            <td mat-cell *matCellDef="let s"><strong>{{ s.productName }}</strong></td>
           </ng-container>
           <ng-container matColumnDef="onHand">
             <th mat-header-cell *matHeaderCellDef class="num">In magazzino</th>
@@ -71,7 +77,12 @@ import { StockAction, StockDialog, StockDialogData, StockDialogResult } from './
           <ng-container matColumnDef="available">
             <th mat-header-cell *matHeaderCellDef class="num">Disponibili</th>
             <td mat-cell *matCellDef="let s" class="num">
-              <strong>{{ s.available }}</strong>
+              <span class="avail">
+                <strong>{{ s.available }}</strong>
+                @if (s.reorderLevel) {
+                  <span class="bar" [class.low]="s.lowStock"><span class="fill" [style.width.%]="level(s)"></span></span>
+                }
+              </span>
             </td>
           </ng-container>
           <ng-container matColumnDef="reorder">
@@ -110,7 +121,7 @@ import { StockAction, StockDialog, StockDialogData, StockDialogResult } from './
           <tr mat-row *matRowDef="let row; columns: columns"></tr>
         </table>
         @if (!loading() && rows().length === 0) {
-          <p class="empty">Nessun prodotto trovato.</p>
+          <app-empty-state icon="search_off" title="Nessun prodotto trovato" message="Cambia la ricerca o togli il filtro delle scorte basse." />
         }
         <mat-paginator
           [length]="total()"
@@ -122,6 +133,30 @@ import { StockAction, StockDialog, StockDialogData, StockDialogResult } from './
         />
       </div>
     </div>
+  `,
+  styles: `
+    .avail {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .bar {
+      width: 56px;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--mat-sys-surface-container-high);
+      overflow: hidden;
+    }
+    .fill {
+      display: block;
+      height: 100%;
+      border-radius: 3px;
+      background: var(--app-ok-solid);
+    }
+    .bar.low .fill {
+      background: var(--app-warn-solid);
+    }
   `,
 })
 export class InventoryList implements OnInit {
@@ -149,6 +184,11 @@ export class InventoryList implements OnInit {
 
   ngOnInit(): void {
     this.reload(0);
+  }
+
+  /** Quanto resta rispetto al doppio della soglia: barra piena con ampio margine, quasi vuota vicino alla soglia. */
+  protected level(stock: Stock): number {
+    return Math.max(0, Math.min(100, Math.round((stock.available / (stock.reorderLevel * 2)) * 100)));
   }
 
   protected onPage(event: PageEvent): void {

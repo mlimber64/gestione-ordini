@@ -176,7 +176,7 @@ body {
   margin-bottom: 8px;
 
   mat-form-field {
-    min-width: 280px;
+    min-width: 220px;
   }
 }
 
@@ -222,6 +222,11 @@ body {
     text-transform: uppercase;
   }
 
+  th.num,
+  td.num {
+    text-align: right;
+  }
+
   tr.mat-mdc-row:hover,
   tr.clickable:hover {
     background: var(--app-surface-sunken);
@@ -230,6 +235,71 @@ body {
   tr.clickable {
     cursor: pointer;
   }
+}
+
+// Barra dei filtri dentro la scheda della tabella, sopra l'intestazione
+.table-card .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--app-border);
+
+  mat-form-field {
+    flex: 0 1 220px;
+    min-width: 180px;
+  }
+
+  // Il campo di ricerca è il primo e il più largo
+  mat-form-field:first-child {
+    flex: 1 1 380px;
+    max-width: 480px;
+  }
+}
+
+// Celle con due righe (nome e dettaglio) e con avatar
+.stack {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+
+  small {
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar-sm {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font: var(--mat-sys-label-large);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.chev {
+  display: block;
+  color: var(--mat-sys-outline);
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease;
+}
+
+tr.clickable:hover .chev {
+  color: var(--mat-sys-primary);
+  transform: translateX(3px);
 }
 
 .num {

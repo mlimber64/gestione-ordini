@@ -8,7 +8,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -18,6 +17,8 @@ import { CatalogApi } from '../../core/api';
 import { AuthService } from '../../core/auth.service';
 import { errorMessage } from '../../core/errors';
 import { Category, Product, ProductInput } from '../../core/models';
+import { EmptyState } from '../../shared/empty-state';
+import { TableSkeleton } from '../../shared/table-skeleton';
 import { CategoryDialog } from './category-dialog';
 import { ProductDialog, ProductDialogData } from './product-dialog';
 
@@ -34,67 +35,70 @@ import { ProductDialog, ProductDialogData } from './product-dialog';
     MatButtonModule,
     MatIconModule,
     MatSlideToggleModule,
-    MatProgressBarModule,
+    EmptyState,
+    TableSkeleton,
   ],
   template: `
     <div class="page">
       <div class="page-header">
-        <h1>Prodotti</h1>
+        <div class="page-title">
+          <h1>Prodotti</h1>
+          <p class="page-sub">{{ total() }} prodotti in totale</p>
+        </div>
         @if (auth.isAdmin()) {
           <button mat-stroked-button (click)="manageCategories()"><mat-icon>folder</mat-icon>Categorie</button>
           <button mat-flat-button (click)="edit(null)"><mat-icon>add</mat-icon>Nuovo prodotto</button>
         }
       </div>
 
-      <div class="filters">
-        <mat-form-field>
-          <mat-label>Cerca per nome o SKU</mat-label>
-          <input matInput [formControl]="query" />
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Categoria</mat-label>
-          <mat-select [formControl]="category">
-            <mat-option value="">Tutte</mat-option>
-            @for (c of categories(); track c.id) {
-              <mat-option [value]="c.id">{{ c.name }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Stato</mat-label>
-          <mat-select [formControl]="active">
-            <mat-option value="">Tutti</mat-option>
-            <mat-option [value]="true">Attivi</mat-option>
-            <mat-option [value]="false">Disattivati</mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
-
-      @if (loading()) {
-        <mat-progress-bar mode="indeterminate" />
-      }
       <div class="table-card">
+        <div class="toolbar">
+          <mat-form-field>
+            <mat-label>Cerca per nome o SKU</mat-label>
+            <input matInput [formControl]="query" />
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Categoria</mat-label>
+            <mat-select [formControl]="category">
+              <mat-option value="">Tutte</mat-option>
+              @for (c of categories(); track c.id) {
+                <mat-option [value]="c.id">{{ c.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Stato</mat-label>
+            <mat-select [formControl]="active">
+              <mat-option value="">Tutti</mat-option>
+              <mat-option [value]="true">Attivi</mat-option>
+              <mat-option [value]="false">Disattivati</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+        @if (loading() && rows().length === 0) {
+          <app-table-skeleton [cols]="6" />
+        }
         <table mat-table [dataSource]="rows()">
           <ng-container matColumnDef="sku">
             <th mat-header-cell *matHeaderCellDef>SKU</th>
-            <td mat-cell *matCellDef="let p">{{ p.sku }}</td>
+            <td mat-cell *matCellDef="let p" class="muted">{{ p.sku }}</td>
           </ng-container>
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef>Nome</th>
-            <td mat-cell *matCellDef="let p">{{ p.name }}</td>
+            <td mat-cell *matCellDef="let p"><strong>{{ p.name }}</strong></td>
           </ng-container>
           <ng-container matColumnDef="category">
             <th mat-header-cell *matHeaderCellDef>Categoria</th>
-            <td mat-cell *matCellDef="let p">{{ p.categoryName }}</td>
+            <td mat-cell *matCellDef="let p"><span class="chip">{{ p.categoryName }}</span></td>
           </ng-container>
           <ng-container matColumnDef="price">
             <th mat-header-cell *matHeaderCellDef class="num">Prezzo</th>
-            <td mat-cell *matCellDef="let p" class="num">{{ p.unitPrice | currency: 'EUR' }}</td>
+            <td mat-cell *matCellDef="let p" class="num"><strong>{{ p.unitPrice | currency: 'EUR' }}</strong></td>
           </ng-container>
           <ng-container matColumnDef="vat">
             <th mat-header-cell *matHeaderCellDef class="num">IVA</th>
-            <td mat-cell *matCellDef="let p" class="num">{{ p.vatRate }}%</td>
+            <td mat-cell *matCellDef="let p" class="num muted">{{ p.vatRate }}%</td>
           </ng-container>
           <ng-container matColumnDef="active">
             <th mat-header-cell *matHeaderCellDef>Attivo</th>
@@ -119,7 +123,7 @@ import { ProductDialog, ProductDialogData } from './product-dialog';
           <tr mat-row *matRowDef="let row; columns: columns"></tr>
         </table>
         @if (!loading() && rows().length === 0) {
-          <p class="empty">Nessun prodotto trovato.</p>
+          <app-empty-state icon="search_off" title="Nessun prodotto trovato" message="Cambia la ricerca o i filtri." />
         }
         <mat-paginator
           [length]="total()"
