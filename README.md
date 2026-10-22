@@ -108,6 +108,7 @@ flowchart LR
 | [0017](docs/adr/0017-immagini-pubblicate-su-ghcr.md) | Immagini Docker pubblicate su GHCR |
 | [0018](docs/adr/0018-pagamenti-registrati-a-mano.md) | Pagamenti registrati a mano |
 | [0019](docs/adr/0019-cdc-con-debezium.md) | CDC con Debezium al posto del polling dell'outbox |
+| [0020](docs/adr/0020-refresh-token-in-un-cookie-httponly.md) | Token di refresh in un cookie HttpOnly |
 
 La qualità e le metriche sono descritte in [docs/qualita.md](docs/qualita.md).
 
@@ -162,7 +163,7 @@ Gli indirizzi e le credenziali si cambiano con `E2E_BASE_URL`, `E2E_USER` ed `E2
 - Contratto OpenAPI: `http://localhost:8081/v3/api-docs`
 
 ```text
-POST /api/v1/auth/login | refresh
+POST /api/v1/auth/login | refresh | logout        il token di refresh sta in un cookie HttpOnly (ADR 0020)
 POST /api/v1/inventory/{productId}/receipts       carico merce
 POST /api/v1/inventory/{productId}/adjustments    rettifica (anche negativa, con motivo)
 GET  /api/v1/inventory?lowStock=true              prodotti sotto scorta

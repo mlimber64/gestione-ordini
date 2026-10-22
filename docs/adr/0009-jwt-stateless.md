@@ -10,7 +10,7 @@ L'API deve essere protetta e scalabile senza sessioni lato server, e deve distin
 ## Decisione
 
 - **order-service** emette e verifica i propri JWT firmati con HS256 (Spring Security come resource server).
-- Il **token di accesso** dura 15 minuti. Il **token di refresh** dura 7 giorni.
+- Il **token di accesso** dura 15 minuti. Il **token di refresh** dura 7 giorni e viaggia in un cookie `HttpOnly` (ADR 0020).
 - Ogni token porta il claim `token_use` (`access` o `refresh`): un token di refresh non è accettato come accesso e viceversa.
 - I ruoli viaggiano nel claim `roles` e i permessi si dichiarano con `@PreAuthorize` sui controller.
 - Le password sono salvate con BCrypt. Il segreto di firma arriva da `JWT_SECRET`: senza almeno 32 byte l'applicazione non parte.

@@ -32,7 +32,6 @@ describe('OrderDetail', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
-    sessionStorage.clear();
     TestBed.configureTestingModule({
       imports: [OrderDetail],
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],

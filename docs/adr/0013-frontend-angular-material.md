@@ -13,7 +13,7 @@ L'applicazione web deve coprire login, clienti, prodotti, magazzino, ordini e no
 
 **Angular Material con un tema sobrio.** Tema Material 3 azzurro, superfici neutre e densità compatta per le tabelle. Font (Inter) e icone sono pacchetti npm serviti dall'applicazione: nessuna richiesta a Google Fonts, quindi nessun problema di privacy né di build offline. Le etichette del paginatore sono in italiano.
 
-**Sessione.** Il token di accesso (15 minuti) vive solo in memoria. Il token di refresh sta in `sessionStorage`: un ricaricamento della pagina non obbliga a rifare il login, ma chiudere la scheda sì. Un interceptor aggiunge il token alle chiamate `/api/`; su un `401` chiede un token nuovo una sola volta (più richieste simultanee condividono la stessa chiamata di refresh) e ripete la richiesta; se il refresh fallisce, chiude la sessione.
+**Sessione.** Il token di accesso (15 minuti) vive solo in memoria. Il token di refresh sta in un cookie `HttpOnly` che la pagina non può leggere (ADR 0020, che sostituisce la scelta iniziale di `sessionStorage`): un ricaricamento della pagina non obbliga a rifare il login, ma chiudere il browser sì. Un interceptor aggiunge il token alle chiamate `/api/`; su un `401` chiede un token nuovo una sola volta (più richieste simultanee condividono la stessa chiamata di refresh) e ripete la richiesta; se il refresh fallisce, chiude la sessione.
 
 **I permessi si nascondono nell'interfaccia ma li applica il server.** I pulsanti di scrittura compaiono solo per ADMIN e OPERATOR e le guardie di rotta evitano schermate inutili, ma la sicurezza è nei controlli del backend (`@PreAuthorize`), che restano l'unica fonte di verità.
 
@@ -25,6 +25,6 @@ L'applicazione web deve coprire login, clienti, prodotti, magazzino, ordini e no
 
 ## Conseguenze
 
-- Il token di refresh in `sessionStorage` è leggibile da uno script nella stessa pagina: un XSS lo esporrebbe. Si riduce il rischio con la CSP e l'assenza di HTML dinamico non fidato, ma non lo si elimina; con un identity provider si userebbe un cookie `HttpOnly`.
+- Il token di refresh era in `sessionStorage`, leggibile da uno script nella stessa pagina (un XSS lo avrebbe esposto). Ora è in un cookie `HttpOnly` (ADR 0020): resta il rischio che uno script agisca come l'utente finché la pagina è aperta, ridotto con la CSP e l'assenza di HTML dinamico non fidato.
 - Il totale mostrato nel nuovo ordine è una stima: il calcolo definitivo (con arrotondamenti per riga) lo fa il server.
 - I test unitari coprono sessione, interceptor, interprete SSE e validazioni; il percorso nel browser è provato dai test di punta a punta in `e2e/` (Playwright), che coprono solo il flusso principale.

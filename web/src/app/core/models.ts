@@ -10,9 +10,9 @@ export interface Page<T> {
   totalPages: number;
 }
 
-export interface TokenPair {
+/** Risposta di login e refresh: solo il token di accesso. Quello di refresh viaggia nel cookie HttpOnly. */
+export interface AccessToken {
   accessToken: string;
-  refreshToken: string;
   tokenType: string;
   expiresIn: number;
 }

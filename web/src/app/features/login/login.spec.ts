@@ -9,7 +9,6 @@ describe('Login', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
-    sessionStorage.clear();
     TestBed.configureTestingModule({
       imports: [Login],
       providers: [provideRouter([{ path: '', children: [] }]), provideHttpClient(), provideHttpClientTesting()],
@@ -64,7 +63,7 @@ describe('Login', () => {
     const request = http.expectOne('/api/v1/auth/login');
     // Gli spazi attorno al nome utente si tolgono, la password non si tocca
     expect(request.request.body).toEqual({ username: 'anna', password: 'password' });
-    request.flush({ accessToken: fakeJwt({ sub: 'anna', roles: ['VIEWER'] }), refreshToken: 'r', tokenType: 'Bearer', expiresIn: 900 });
+    request.flush({ accessToken: fakeJwt({ sub: 'anna', roles: ['VIEWER'] }), tokenType: 'Bearer', expiresIn: 900 });
 
     expect(navigate).toHaveBeenCalledWith(['/']);
   });

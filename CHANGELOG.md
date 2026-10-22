@@ -13,6 +13,7 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/); il versiona
 - Test di punta a punta con Playwright (`e2e/`): accesso, creazione e conferma di un ordine e notifiche ricevute in diretta, sull'applicazione completa avviata con il profilo `app`. Girano nel nuovo job `e2e` della CI.
 
 ### Modificato
+- **Il token di refresh passa da `sessionStorage` a un cookie `HttpOnly`** (ADR 0020): un XSS non può più rubarlo. Cambia l'API di autenticazione: `login` e `refresh` restituiscono solo il token di accesso, `refresh` legge il cookie (non accetta più il token nel corpo) e c'è un nuovo `POST /api/v1/auth/logout`. Il cookie è `SameSite=Strict`, limitato a `/api/v1/auth`, `Secure` in HTTPS e «di sessione». Le schede dello stesso browser condividono la sessione.
 - La pulizia notturna dell'outbox è una classe a parte (`OutboxCleanup`) e funziona nei due modi. La proprietà `app.outbox.relay.enabled` è sostituita da `app.outbox.mode` (`polling` di base, oppure `cdc`).
 
 ## [1.0.0] - 2026-10-21

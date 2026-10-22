@@ -22,6 +22,7 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
     TestBed.configureTestingModule({
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     });
@@ -31,69 +32,104 @@ describe('AuthService', () => {
 
   afterEach(() => http.verify());
 
-  const pair = (roles: string[]) => ({
+  const token = (roles: string[]) => ({
     accessToken: fakeJwt({ sub: 'anna', roles }),
-    refreshToken: 'refresh-1',
     tokenType: 'Bearer',
     expiresIn: 900,
   });
 
-  it('dopo il login espone utente e ruoli e salva solo il refresh token nella sessione', () => {
+  it('dopo il login espone utente e ruoli e non salva nulla nel browser', () => {
     auth.login('anna', 'password').subscribe();
     const request = http.expectOne('/api/v1/auth/login');
     expect(request.request.body).toEqual({ username: 'anna', password: 'password' });
-    request.flush(pair(['ADMIN']));
+    request.flush(token(['ADMIN']));
 
     expect(auth.isAuthenticated()).toBe(true);
     expect(auth.user()?.username).toBe('anna');
     expect(auth.isAdmin()).toBe(true);
     expect(auth.canWrite()).toBe(true);
-    expect(sessionStorage.getItem('gestione-ordini.refresh')).toBe('refresh-1');
-    expect(sessionStorage.length).toBe(1);
+    // Il token di refresh è in un cookie HttpOnly: la pagina non ne conserva nessuna copia
+    expect(sessionStorage.length).toBe(0);
+    expect(localStorage.length).toBe(0);
   });
 
   it('un utente di sola lettura non può modificare', () => {
     auth.login('v', 'p').subscribe();
-    http.expectOne('/api/v1/auth/login').flush(pair(['VIEWER']));
+    http.expectOne('/api/v1/auth/login').flush(token(['VIEWER']));
 
     expect(auth.canWrite()).toBe(false);
     expect(auth.isAdmin()).toBe(false);
     expect(auth.hasRole('VIEWER')).toBe(true);
   });
 
-  it('più refresh simultanei fanno una sola chiamata', () => {
-    sessionStorage.setItem('gestione-ordini.refresh', 'refresh-0');
-    const results: string[] = [];
-    auth.refresh().subscribe((token) => results.push(token));
-    auth.refresh().subscribe((token) => results.push(token));
+  it('il refresh non manda nessun token: ci pensa il cookie', () => {
+    auth.refresh().subscribe();
 
-    http.expectOne('/api/v1/auth/refresh').flush(pair(['OPERATOR']));
+    const request = http.expectOne('/api/v1/auth/refresh');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toBeNull();
+    request.flush(token(['OPERATOR']));
+  });
+
+  it('più refresh simultanei fanno una sola chiamata', () => {
+    const results: string[] = [];
+    auth.refresh().subscribe((value) => results.push(value));
+    auth.refresh().subscribe((value) => results.push(value));
+
+    http.expectOne('/api/v1/auth/refresh').flush(token(['OPERATOR']));
 
     expect(results).toHaveLength(2);
     expect(results[0]).toBe(results[1]);
   });
 
-  it('se il refresh fallisce la sessione si chiude', () => {
-    sessionStorage.setItem('gestione-ordini.refresh', 'scaduto');
-    auth.restore().subscribe((restored) => expect(restored).toBe(false));
+  it('all\'avvio prova a ripristinare la sessione dal cookie, anche se la pagina non può vederlo', () => {
+    let restored: boolean | undefined;
+    auth.restore().subscribe((value) => (restored = value));
+
+    http.expectOne('/api/v1/auth/refresh').flush(token(['ADMIN']));
+
+    expect(restored).toBe(true);
+    expect(auth.isAuthenticated()).toBe(true);
+  });
+
+  it('se il refresh fallisce (cookie assente o scaduto) resta senza accesso', () => {
+    let restored: boolean | undefined;
+    auth.restore().subscribe((value) => (restored = value));
     http.expectOne('/api/v1/auth/refresh').flush({}, { status: 401, statusText: 'Unauthorized' });
 
+    expect(restored).toBe(false);
     expect(auth.isAuthenticated()).toBe(false);
-    expect(sessionStorage.getItem('gestione-ordini.refresh')).toBeNull();
   });
 
-  it('senza refresh token salvato non prova nemmeno a ripristinare', () => {
-    auth.restore().subscribe((restored) => expect(restored).toBe(false));
-    http.expectNone('/api/v1/auth/refresh');
-  });
-
-  it('il logout cancella token e sessione', () => {
+  it('se il refresh fallisce durante la sessione toglie il token di accesso', () => {
     auth.login('anna', 'p').subscribe();
-    http.expectOne('/api/v1/auth/login').flush(pair(['ADMIN']));
+    http.expectOne('/api/v1/auth/login').flush(token(['ADMIN']));
+
+    auth.refresh().subscribe({ error: () => undefined });
+    http.expectOne('/api/v1/auth/refresh').flush({}, { status: 401, statusText: 'Unauthorized' });
+
+    expect(auth.accessToken()).toBeNull();
+  });
+
+  it('il logout toglie il token dalla memoria e chiede al server di eliminare il cookie', () => {
+    auth.login('anna', 'p').subscribe();
+    http.expectOne('/api/v1/auth/login').flush(token(['ADMIN']));
 
     auth.logout(false);
 
     expect(auth.accessToken()).toBeNull();
-    expect(sessionStorage.getItem('gestione-ordini.refresh')).toBeNull();
+    const request = http.expectOne('/api/v1/auth/logout');
+    expect(request.request.method).toBe('POST');
+    request.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('il logout chiude la sessione anche se il server non risponde', () => {
+    auth.login('anna', 'p').subscribe();
+    http.expectOne('/api/v1/auth/login').flush(token(['ADMIN']));
+
+    auth.logout(false);
+    http.expectOne('/api/v1/auth/logout').error(new ProgressEvent('error'));
+
+    expect(auth.isAuthenticated()).toBe(false);
   });
 });

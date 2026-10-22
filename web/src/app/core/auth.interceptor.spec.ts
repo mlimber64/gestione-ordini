@@ -13,13 +13,11 @@ describe('authInterceptor', () => {
 
   const pair = (name: string) => ({
     accessToken: fakeJwt({ sub: name, roles: ['ADMIN'] }),
-    refreshToken: 'refresh-' + name,
     tokenType: 'Bearer',
     expiresIn: 900,
   });
 
   beforeEach(() => {
-    sessionStorage.clear();
     TestBed.configureTestingModule({
       providers: [provideRouter([{ path: 'login', children: [] }]), provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting()],
     });
@@ -65,9 +63,17 @@ describe('authInterceptor', () => {
     http.get('/api/v1/orders').subscribe({ error: (e) => (status = e.status) });
     controller.expectOne('/api/v1/orders').flush({}, { status: 401, statusText: 'Unauthorized' });
     controller.expectOne('/api/v1/auth/refresh').flush({}, { status: 401, statusText: 'Unauthorized' });
+    // Chiudere la sessione chiede al server di eliminare il cookie di refresh
+    controller.expectOne('/api/v1/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
 
     expect(status).toBe(401);
     expect(auth.isAuthenticated()).toBe(false);
+  });
+
+  it('non aggiunge il token nemmeno alla chiamata di logout', () => {
+    http.post('/api/v1/auth/logout', null).subscribe();
+
+    expect(controller.expectOne('/api/v1/auth/logout').request.headers.has('Authorization')).toBe(false);
   });
 
   it('gli altri errori passano senza tentare il refresh', () => {
