@@ -7,7 +7,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { Router, RouterLink } from '@angular/router';
@@ -16,6 +15,8 @@ import { OrdersApi } from '../../core/api';
 import { AuthService } from '../../core/auth.service';
 import { ORDER_STATUS_CLASS, ORDER_STATUS_LABEL } from '../../core/labels';
 import { OrderStatus, OrderSummary } from '../../core/models';
+import { EmptyState } from '../../shared/empty-state';
+import { TableSkeleton } from '../../shared/table-skeleton';
 
 @Component({
   selector: 'app-order-list',
@@ -31,38 +32,41 @@ import { OrderStatus, OrderSummary } from '../../core/models';
     MatSelectModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressBarModule,
+    EmptyState,
+    TableSkeleton,
   ],
   template: `
     <div class="page">
       <div class="page-header">
-        <h1>Ordini</h1>
+        <div class="page-title">
+          <h1>Ordini</h1>
+          <p class="page-sub">{{ total() }} ordini in totale</p>
+        </div>
         @if (auth.canWrite()) {
           <a mat-flat-button routerLink="/ordini/nuovo"><mat-icon>add</mat-icon>Nuovo ordine</a>
         }
       </div>
 
-      <div class="filters">
-        <mat-form-field>
-          <mat-label>Cerca per numero d'ordine</mat-label>
-          <input matInput [formControl]="query" />
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Stato</mat-label>
-          <mat-select [formControl]="status">
-            <mat-option value="">Tutti</mat-option>
-            @for (s of statuses; track s) {
-              <mat-option [value]="s">{{ label[s] }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-      </div>
-
-      @if (loading()) {
-        <mat-progress-bar mode="indeterminate" />
-      }
       <div class="table-card">
+        <div class="toolbar">
+          <mat-form-field>
+            <mat-label>Cerca per numero d'ordine</mat-label>
+            <input matInput [formControl]="query" />
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Stato</mat-label>
+            <mat-select [formControl]="status">
+              <mat-option value="">Tutti</mat-option>
+              @for (s of statuses; track s) {
+                <mat-option [value]="s">{{ label[s] }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+        @if (loading() && rows().length === 0) {
+          <app-table-skeleton [cols]="5" />
+        }
         <table mat-table [dataSource]="rows()">
           <ng-container matColumnDef="number">
             <th mat-header-cell *matHeaderCellDef>Numero</th>
@@ -82,17 +86,21 @@ import { OrderStatus, OrderSummary } from '../../core/models';
           </ng-container>
           <ng-container matColumnDef="total">
             <th mat-header-cell *matHeaderCellDef class="num">Totale</th>
-            <td mat-cell *matCellDef="let o" class="num">{{ o.totalGross | currency: 'EUR' }}</td>
+            <td mat-cell *matCellDef="let o" class="num"><strong>{{ o.totalGross | currency: 'EUR' }}</strong></td>
           </ng-container>
           <ng-container matColumnDef="date">
             <th mat-header-cell *matHeaderCellDef>Data</th>
-            <td mat-cell *matCellDef="let o">{{ o.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td mat-cell *matCellDef="let o" class="muted">{{ o.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="go">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let o"><mat-icon class="chev" aria-hidden="true">chevron_right</mat-icon></td>
           </ng-container>
           <tr mat-header-row *matHeaderRowDef="columns"></tr>
           <tr mat-row *matRowDef="let row; columns: columns" class="clickable" (click)="open(row)"></tr>
         </table>
         @if (!loading() && rows().length === 0) {
-          <p class="empty">Nessun ordine trovato.</p>
+          <app-empty-state icon="search_off" title="Nessun ordine trovato" message="Cambia la ricerca o il filtro per stato." />
         }
         <mat-paginator
           [length]="total()"
@@ -114,7 +122,7 @@ export class OrderList implements OnInit {
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
 
-  protected readonly columns = ['number', 'customer', 'status', 'total', 'date'];
+  protected readonly columns = ['number', 'customer', 'status', 'total', 'date', 'go'];
   protected readonly statuses: OrderStatus[] = ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
   protected readonly label: Record<string, string> = ORDER_STATUS_LABEL;
   protected readonly cls: Record<string, string> = ORDER_STATUS_CLASS;

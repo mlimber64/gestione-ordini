@@ -86,3 +86,25 @@ describe('InventoryList', () => {
     http.expectNone('/api/v1/inventory/p-1/receipts');
   });
 });
+
+describe('InventoryList · barra della disponibilità', () => {
+  let component: { level(s: Stock): number };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [InventoryList],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    component = TestBed.createComponent(InventoryList).componentInstance as unknown as typeof component;
+  });
+
+  const level = (available: number, reorderLevel: number) => component.level({ ...stock, available, reorderLevel });
+
+  it('è metà alla soglia, piena al doppio e mai fuori da 0-100', () => {
+    expect(level(4, 4)).toBe(50);
+    expect(level(8, 4)).toBe(100);
+    expect(level(50, 4)).toBe(100);
+    expect(level(0, 4)).toBe(0);
+    expect(level(-2, 4)).toBe(0);
+  });
+});
