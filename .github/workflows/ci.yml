@@ -71,6 +71,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker compose -f deploy/docker-compose.yml --profile app build
+      # Anche il compose che usa le immagini pubblicate su GHCR deve restare valido
+      - run: docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.ghcr.yml --profile app config --quiet
 
   # Test di punta a punta nel browser (Playwright) sull'intera applicazione avviata con Docker Compose:
   # accesso, nuovo ordine, conferma e notifiche in diretta attraverso nginx, i due servizi, PostgreSQL e Kafka.

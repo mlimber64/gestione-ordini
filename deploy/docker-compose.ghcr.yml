@@ -1,0 +1,22 @@
+# Prova l'applicazione con le immagini già pubblicate su GitHub (ghcr.io), senza compilare nulla sul proprio computer.
+# Si combina con il compose principale:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.ghcr.yml --profile app up -d
+#
+# La versione si sceglie con GESTIONE_ORDINI_VERSION (per esempio 1.1.0); senza, si usa l'ultima (latest).
+# Richiede Docker Compose 2.24 o successivo (per `!reset`).
+services:
+  order-service:
+    image: ghcr.io/mlimber64/gestione-ordini/order-service:${GESTIONE_ORDINI_VERSION:-latest}
+    build: !reset null
+    pull_policy: always
+
+  notification-service:
+    image: ghcr.io/mlimber64/gestione-ordini/notification-service:${GESTIONE_ORDINI_VERSION:-latest}
+    build: !reset null
+    pull_policy: always
+
+  web:
+    image: ghcr.io/mlimber64/gestione-ordini/web:${GESTIONE_ORDINI_VERSION:-latest}
+    build: !reset null
+    pull_policy: always

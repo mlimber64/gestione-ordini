@@ -24,6 +24,12 @@ node deploy/seed.mjs        # dati di esempio (facoltativo, richiede Node 18 o s
 
 Apri **http://localhost:8080** ed entra con `admin` / `admin-demo-1234` (valori di demo: vedi [Configurazione](#configurazione)). Lo stesso sito è su **https://localhost:8443** con HTTP/2 e un certificato autofirmato (il browser avvisa: è normale in locale), utile per tenere aperte molte schede con le notifiche in diretta ([ADR 0015](docs/adr/0015-https-e-http2-davanti-al-frontend.md)).
 
+Senza compilare nulla: dalle versioni successive alla 1.0.0 le immagini si pubblicano su GitHub (`ghcr.io/mlimber64/gestione-ordini/…`) e si possono scaricare già pronte, scegliendo la versione con `GESTIONE_ORDINI_VERSION` (vedi [ADR 0017](docs/adr/0017-immagini-pubblicate-su-ghcr.md)):
+
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.ghcr.yml --profile app up -d
+```
+
 Per aggiungere metriche e dashboard: `--profile observability`, poi Grafana su **http://localhost:3000**. Per spegnere tutto: `docker compose -f deploy/docker-compose.yml --profile app --profile observability down`.
 
 ## Cosa fa
@@ -90,6 +96,7 @@ flowchart LR
 | [0014](docs/adr/0014-consegna-e-osservabilita.md) | Consegna con Docker, metriche e controlli di qualità |
 | [0015](docs/adr/0015-https-e-http2-davanti-al-frontend.md) | HTTPS e HTTP/2 davanti al frontend |
 | [0016](docs/adr/0016-conservazione-delle-notifiche.md) | Conservazione delle notifiche |
+| [0017](docs/adr/0017-immagini-pubblicate-su-ghcr.md) | Immagini Docker pubblicate su GHCR |
 
 La qualità e le metriche sono descritte in [docs/qualita.md](docs/qualita.md).
 
