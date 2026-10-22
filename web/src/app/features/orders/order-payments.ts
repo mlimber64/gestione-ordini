@@ -46,18 +46,23 @@ import { PaymentDialog, PaymentDialogData } from './payment-dialog';
       </div>
 
       @if (data(); as d) {
-        <div class="summary">
-          <div class="card">
-            <span class="muted">Totale ordine</span>
-            <strong>{{ d.total | currency: 'EUR' }}</strong>
+        <div class="card summary">
+          <div class="figures">
+            <div>
+              <span class="muted">Totale ordine</span>
+              <strong>{{ d.total | currency: 'EUR' }}</strong>
+            </div>
+            <div>
+              <span class="muted">Incassato</span>
+              <strong class="paid">{{ d.paid | currency: 'EUR' }}</strong>
+            </div>
+            <div>
+              <span class="muted">Ancora da incassare</span>
+              <strong>{{ d.balance | currency: 'EUR' }}</strong>
+            </div>
           </div>
-          <div class="card">
-            <span class="muted">Incassato</span>
-            <strong>{{ d.paid | currency: 'EUR' }}</strong>
-          </div>
-          <div class="card">
-            <span class="muted">Ancora da incassare</span>
-            <strong>{{ d.balance | currency: 'EUR' }}</strong>
+          <div class="meter" role="img" [attr.aria-label]="'Incassato il ' + percent(d) + '% del totale'">
+            <span class="fill" [style.width.%]="percent(d)"></span>
           </div>
         </div>
 
@@ -109,7 +114,13 @@ import { PaymentDialog, PaymentDialogData } from './payment-dialog';
             </table>
           </div>
         } @else {
-          <p class="card empty">Nessun pagamento registrato.</p>
+          <div class="card none">
+            <mat-icon>payments</mat-icon>
+            <span>
+              <strong>Nessun pagamento registrato</strong>
+              <small class="muted">Registra un bonifico, una carta o un contrassegno quando arriva.</small>
+            </span>
+          </div>
         }
       }
     </section>
@@ -117,6 +128,19 @@ import { PaymentDialog, PaymentDialogData } from './payment-dialog';
   styles: `
     section {
       margin-top: 24px;
+    }
+    .none {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .none span {
+      display: flex;
+      flex-direction: column;
+    }
+    .none strong {
+      color: var(--mat-sys-on-surface);
     }
     .head {
       display: flex;
@@ -127,22 +151,46 @@ import { PaymentDialog, PaymentDialogData } from './payment-dialog';
     }
     h2 {
       font: var(--mat-sys-title-small);
+      font-weight: 600;
       margin: 0;
-      color: var(--mat-sys-on-surface-variant);
     }
     .spacer {
       flex: 1 1 auto;
     }
     .summary {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 12px;
+      gap: 14px;
       margin-bottom: 12px;
     }
-    .summary .card {
+    .figures {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px 24px;
+    }
+    .figures div {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+    }
+    .figures strong {
+      font: var(--mat-sys-title-large);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .paid {
+      color: var(--app-ok-fg);
+    }
+    .meter {
+      height: 8px;
+      border-radius: 4px;
+      background: var(--mat-sys-surface-container-high);
+      overflow: hidden;
+    }
+    .fill {
+      display: block;
+      height: 100%;
+      border-radius: 4px;
+      background: var(--app-ok-solid);
+      transition: width 0.4s ease;
     }
     .actions {
       text-align: right;
@@ -173,6 +221,11 @@ export class OrderPaymentsPanel implements OnInit {
 
   ngOnInit(): void {
     this.reload();
+  }
+
+  /** Quota già incassata del totale, tra 0 e 100. */
+  protected percent(summary: OrderPayments): number {
+    return summary.total > 0 ? Math.max(0, Math.min(100, Math.round((summary.paid / summary.total) * 100))) : 0;
   }
 
   protected methodText(method: PaymentMethod): string {

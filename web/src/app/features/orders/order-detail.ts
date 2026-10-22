@@ -12,7 +12,7 @@ import { OrdersApi } from '../../core/api';
 import { AuthService } from '../../core/auth.service';
 import { errorMessage } from '../../core/errors';
 import { NEXT_STEPS, ORDER_STATUS_CLASS, ORDER_STATUS_LABEL } from '../../core/labels';
-import { Order } from '../../core/models';
+import { Order, OrderStatus } from '../../core/models';
 import { CancelDialog } from './cancel-dialog';
 import { OrderPaymentsPanel } from './order-payments';
 
@@ -24,6 +24,32 @@ const STEP_LABEL: Record<Step, { text: string; icon: string }> = {
   deliver: { text: 'Segna come consegnato', icon: 'inventory' },
   cancel: { text: 'Annulla ordine', icon: 'cancel' },
 };
+
+/** Le tappe del percorso normale di un ordine, nell'ordine in cui avvengono. */
+const JOURNEY: { status: OrderStatus; icon: string }[] = [
+  { status: 'PENDING', icon: 'hourglass_top' },
+  { status: 'CONFIRMED', icon: 'task_alt' },
+  { status: 'SHIPPED', icon: 'local_shipping' },
+  { status: 'DELIVERED', icon: 'inventory' },
+];
+
+export interface JourneyStep {
+  status: OrderStatus;
+  icon: string;
+  state: 'done' | 'current' | 'todo';
+  at: string | null;
+}
+
+/** Stato di ogni tappa: fatta (con la data), in corso o ancora da fare. Un ordine annullato non ha percorso. */
+export function journeyOf(order: Pick<Order, 'status' | 'history'>): JourneyStep[] {
+  if (order.status === 'CANCELLED') return [];
+  return JOURNEY.map(({ status, icon }) => ({
+    status,
+    icon,
+    state: status === order.status ? 'current' : order.history.some((h) => h.to === status) ? 'done' : 'todo',
+    at: order.history.find((h) => h.to === status)?.changedAt ?? null,
+  }));
+}
 
 @Component({
   selector: 'app-order-detail',
@@ -47,11 +73,13 @@ const STEP_LABEL: Record<Step, { text: string; icon: string }> = {
           <a mat-icon-button routerLink="/ordini" aria-label="Torna agli ordini"><mat-icon>arrow_back</mat-icon></a>
           <h1>{{ o.number }}</h1>
           <span class="chip" [class]="cls[o.status]">{{ label[o.status] }}</span>
+          <span class="spacer"></span>
           @if (auth.canWrite()) {
             @for (step of steps(); track step) {
               <button
-                mat-stroked-button
                 [class.danger]="step === 'cancel'"
+                class="step"
+                [class.primary]="step !== 'cancel'"
                 [disabled]="busy()"
                 (click)="run(step)"
               >
@@ -61,25 +89,58 @@ const STEP_LABEL: Record<Step, { text: string; icon: string }> = {
           }
         </div>
 
-        <div class="summary">
-          <div class="card">
-            <h2>Cliente</h2>
-            <a [routerLink]="['/clienti', o.customerId]">{{ o.customerName }}</a>
-            <span class="muted">{{ o.customerCode }}</span>
+        @if (o.status === 'CANCELLED') {
+          <div class="banner" role="status">
+            <mat-icon>block</mat-icon>
+            <span>
+              <strong>Ordine annullato</strong>
+              @if (cancellation(); as c) {
+                <small>il {{ c.changedAt | date: 'dd/MM/yyyy HH:mm' }} da {{ c.changedBy }}@if (c.reason) { · Motivo: {{ c.reason }} }</small>
+              }
+            </span>
           </div>
-          <div class="card">
-            <h2>Spedizione</h2>
-            <span>{{ o.shippingAddress.street }}</span>
-            <span>{{ o.shippingAddress.postalCode }} {{ o.shippingAddress.city }} ({{ o.shippingAddress.province }})</span>
+        } @else {
+          <ol class="journey" aria-label="Avanzamento dell'ordine">
+            @for (s of journey(); track s.status) {
+              <li [class]="s.state">
+                <span class="node"><mat-icon>{{ s.state === 'done' ? 'check' : s.icon }}</mat-icon></span>
+                <span class="j-text">
+                  <strong>{{ label[s.status] }}</strong>
+                  <small class="muted">{{ s.at ? (s.at | date: 'dd/MM HH:mm') : '' }}</small>
+                </span>
+              </li>
+            }
+          </ol>
+        }
+
+        <section class="card facts" aria-label="Dati dell'ordine">
+          <div class="info-item">
+            <span class="info-icon"><mat-icon>person</mat-icon></span>
+            <div>
+              <span class="info-label">Cliente</span>
+              <a [routerLink]="['/clienti', o.customerId]">{{ o.customerName }}</a>
+              <span class="muted">{{ o.customerCode }}</span>
+            </div>
           </div>
-          <div class="card">
-            <h2>Creato</h2>
-            <span>{{ o.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
-            <span class="muted">da {{ o.createdBy }}</span>
+          <div class="info-item">
+            <span class="info-icon"><mat-icon>local_shipping</mat-icon></span>
+            <div>
+              <span class="info-label">Spedizione</span>
+              <span>{{ o.shippingAddress.street }}</span>
+              <span class="muted">{{ o.shippingAddress.postalCode }} {{ o.shippingAddress.city }} ({{ o.shippingAddress.province }})</span>
+            </div>
           </div>
-        </div>
+          <div class="info-item">
+            <span class="info-icon"><mat-icon>event</mat-icon></span>
+            <div>
+              <span class="info-label">Creato</span>
+              <span>{{ o.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+              <span class="muted">da {{ o.createdBy }}</span>
+            </div>
+          </div>
+        </section>
         @if (o.notes) {
-          <p class="card notes"><strong>Note:</strong> {{ o.notes }}</p>
+          <p class="card notes"><mat-icon>sticky_note_2</mat-icon><span><strong>Note:</strong> {{ o.notes }}</span></p>
         }
 
         <div class="table-card lines">
@@ -87,39 +148,49 @@ const STEP_LABEL: Record<Step, { text: string; icon: string }> = {
             <ng-container matColumnDef="product">
               <th mat-header-cell *matHeaderCellDef>Prodotto</th>
               <td mat-cell *matCellDef="let l">
-                <strong>{{ l.sku }}</strong> · {{ l.productName }}
+                <span class="stack">
+                  <strong>{{ l.productName }}</strong>
+                  <small class="muted">{{ l.sku }}</small>
+                </span>
               </td>
-              <td mat-footer-cell *matFooterCellDef></td>
             </ng-container>
             <ng-container matColumnDef="qty">
               <th mat-header-cell *matHeaderCellDef class="num">Qtà</th>
               <td mat-cell *matCellDef="let l" class="num">{{ l.quantity }}</td>
-              <td mat-footer-cell *matFooterCellDef></td>
             </ng-container>
             <ng-container matColumnDef="price">
               <th mat-header-cell *matHeaderCellDef class="num">Prezzo</th>
               <td mat-cell *matCellDef="let l" class="num">{{ l.unitPrice | currency: 'EUR' }}</td>
-              <td mat-footer-cell *matFooterCellDef class="num">Imponibile</td>
             </ng-container>
             <ng-container matColumnDef="net">
               <th mat-header-cell *matHeaderCellDef class="num">Imponibile</th>
               <td mat-cell *matCellDef="let l" class="num">{{ l.lineNet | currency: 'EUR' }}</td>
-              <td mat-footer-cell *matFooterCellDef class="num">{{ o.totalNet | currency: 'EUR' }}</td>
             </ng-container>
             <ng-container matColumnDef="vat">
               <th mat-header-cell *matHeaderCellDef class="num">IVA</th>
-              <td mat-cell *matCellDef="let l" class="num">{{ l.lineVat | currency: 'EUR' }} ({{ l.vatRate }}%)</td>
-              <td mat-footer-cell *matFooterCellDef class="num">{{ o.totalVat | currency: 'EUR' }}</td>
+              <td mat-cell *matCellDef="let l" class="num muted">{{ l.lineVat | currency: 'EUR' }} ({{ l.vatRate }}%)</td>
             </ng-container>
             <ng-container matColumnDef="gross">
               <th mat-header-cell *matHeaderCellDef class="num">Totale</th>
-              <td mat-cell *matCellDef="let l" class="num">{{ l.lineGross | currency: 'EUR' }}</td>
-              <td mat-footer-cell *matFooterCellDef class="num total">{{ o.totalGross | currency: 'EUR' }}</td>
+              <td mat-cell *matCellDef="let l" class="num"><strong>{{ l.lineGross | currency: 'EUR' }}</strong></td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="columns"></tr>
             <tr mat-row *matRowDef="let row; columns: columns"></tr>
-            <tr mat-footer-row *matFooterRowDef="columns"></tr>
           </table>
+          <dl class="totals">
+            <div>
+              <dt>Imponibile</dt>
+              <dd>{{ o.totalNet | currency: 'EUR' }}</dd>
+            </div>
+            <div>
+              <dt>IVA</dt>
+              <dd>{{ o.totalVat | currency: 'EUR' }}</dd>
+            </div>
+            <div class="grand">
+              <dt>Totale</dt>
+              <dd>{{ o.totalGross | currency: 'EUR' }}</dd>
+            </div>
+          </dl>
         </div>
 
         <app-order-payments [orderId]="o.id" [cancelled]="o.status === 'CANCELLED'" />
@@ -140,46 +211,242 @@ const STEP_LABEL: Record<Step, { text: string; icon: string }> = {
     </div>
   `,
   styles: `
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 12px;
-      margin-bottom: 12px;
+    .page-header h1 {
+      flex: 0 1 auto;
     }
-    .summary .card {
+    .spacer {
+      flex: 1 1 auto;
+    }
+    .step {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 16px;
+      border: 1px solid var(--mat-sys-outline);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--mat-sys-on-surface);
+      font: var(--mat-sys-label-large);
+      cursor: pointer;
+    }
+    .step:hover:not(:disabled) {
+      background: var(--app-surface-sunken);
+    }
+    .step.primary {
+      border-color: transparent;
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+    }
+    .step.primary:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--mat-sys-primary) 88%, black);
+    }
+    .step.danger {
+      border-color: var(--mat-sys-error);
+      color: var(--mat-sys-error);
+    }
+    .step:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    .step mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .banner {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+      padding: 14px 18px;
+      border-radius: var(--app-radius);
+      background: var(--app-bad-bg);
+      color: var(--app-bad-fg);
+    }
+    .banner span {
       display: flex;
       flex-direction: column;
-      gap: 2px;
     }
-    h2 {
-      font: var(--mat-sys-title-small);
-      margin: 0 0 6px;
+
+    /* Percorso: tappe collegate da una linea, fatte in verde e quella in corso evidenziata */
+    .journey {
+      display: flex;
+      list-style: none;
+      margin: 0 0 16px;
+      padding: 18px 20px;
+      background: var(--app-surface);
+      border: 1px solid var(--app-border);
+      border-radius: var(--app-radius);
+      box-shadow: var(--app-shadow);
+      overflow-x: auto;
+    }
+    .journey li {
+      position: relative;
+      display: flex;
+      flex: 1 1 0;
+      align-items: center;
+      gap: 12px;
+      min-width: 150px;
+    }
+    .journey li:not(:last-child)::after {
+      content: '';
+      flex: 1;
+      height: 2px;
+      margin: 0 12px;
+      background: var(--mat-sys-outline-variant);
+    }
+    .journey li.done:not(:last-child)::after {
+      background: var(--app-ok-solid);
+    }
+    .node {
+      display: grid;
+      place-items: center;
+      flex: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--mat-sys-outline-variant);
       color: var(--mat-sys-on-surface-variant);
     }
-    .section {
-      margin-top: 24px;
+    .node mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+    .done .node {
+      border-color: var(--app-ok-solid);
+      background: var(--app-ok-solid);
+      color: #fff;
+    }
+    .current .node {
+      border-color: var(--mat-sys-primary);
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+    }
+    .j-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+    .todo .j-text strong {
+      color: var(--mat-sys-on-surface-variant);
+      font-weight: 500;
+    }
+
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .info-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .info-item > div {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .info-icon {
+      display: grid;
+      place-items: center;
+      flex: none;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: var(--mat-sys-surface-container-high);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .info-label {
+      font: var(--mat-sys-label-medium);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--mat-sys-on-surface-variant);
     }
     .notes {
-      margin: 0 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 16px;
     }
-    .total {
+    .notes mat-icon {
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .lines {
+      margin-bottom: 8px;
+    }
+    .totals {
+      display: grid;
+      gap: 6px;
+      width: min(320px, 100%);
+      margin: 0 0 0 auto;
+      padding: 16px 20px 18px;
+      border-top: 1px solid var(--app-border);
+    }
+    .totals div {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .totals dt {
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .totals dd {
+      margin: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .totals .grand {
+      margin-top: 4px;
+      padding-top: 10px;
+      border-top: 1px solid var(--app-border);
+      font: var(--mat-sys-title-medium);
+      font-weight: 600;
+    }
+    .totals .grand dt {
+      color: var(--mat-sys-on-surface);
+    }
+
+    .section {
+      margin: 28px 0 10px;
       font: var(--mat-sys-title-small);
-    }
-    .danger {
-      color: var(--mat-sys-error);
+      font-weight: 600;
     }
     .timeline {
       list-style: none;
       margin: 0;
-      padding: 0 0 0 4px;
+      padding: 0 0 0 10px;
       border-left: 2px solid var(--mat-sys-outline-variant);
     }
     .timeline li {
+      position: relative;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 4px 12px;
-      padding: 6px 0 6px 16px;
+      padding: 8px 0 8px 22px;
+    }
+    .timeline li::before {
+      content: '';
+      position: absolute;
+      left: -17px;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      margin-top: -6px;
+      border-radius: 50%;
+      border: 2px solid var(--mat-sys-primary);
+      background: var(--app-canvas);
+    }
+    @media (max-width: 700px) {
+      .journey {
+        padding: 14px;
+      }
     }
   `,
 })
@@ -195,6 +462,11 @@ export class OrderDetail implements OnInit {
   protected readonly order = signal<Order | null>(null);
   protected readonly busy = signal(false);
   protected readonly steps = computed(() => NEXT_STEPS[this.order()?.status ?? 'DELIVERED']);
+  protected readonly journey = computed(() => {
+    const order = this.order();
+    return order ? journeyOf(order) : [];
+  });
+  protected readonly cancellation = computed(() => this.order()?.history.find((h) => h.to === 'CANCELLED') ?? null);
 
   protected readonly columns = ['product', 'qty', 'price', 'net', 'vat', 'gross'];
   protected readonly label = ORDER_STATUS_LABEL;

@@ -5,7 +5,7 @@ import { provideRouter } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { fakeJwt } from '../../core/testing';
 import { Order, OrderStatus } from '../../core/models';
-import { OrderDetail } from './order-detail';
+import { OrderDetail, journeyOf } from './order-detail';
 
 const order = (status: OrderStatus): Order => ({
   id: 'o-1',
@@ -50,6 +50,31 @@ describe('OrderDetail', () => {
     const buttons = [...element.querySelectorAll('button')].map((b) => b.textContent!.replace(/\s+/g, ' ').trim());
     return { fixture, element, buttons };
   }
+
+  it('un ordine annullato mostra il banner con chi, quando e perché, e nessun percorso', () => {
+    TestBed.inject(AuthService).accessToken.set(fakeJwt({ sub: 'anna', roles: ['ADMIN'] }));
+    const fixture = TestBed.createComponent(OrderDetail);
+    fixture.componentRef.setInput('id', 'o-1');
+    fixture.detectChanges();
+    const cancelled = order('CANCELLED');
+    cancelled.history.push({ from: 'PENDING', to: 'CANCELLED', reason: 'Cliente irraggiungibile', changedBy: 'luca', changedAt: '2026-10-22T09:30:00Z' });
+    http.expectOne('/api/v1/orders/o-1').flush(cancelled);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('.banner')?.textContent).toContain('Ordine annullato');
+    expect(element.querySelector('.banner')?.textContent).toContain('Cliente irraggiungibile');
+    expect(element.querySelector('.banner')?.textContent).toContain('luca');
+    expect(element.querySelector('.journey')).toBeNull();
+  });
+
+  it('mostra il percorso con la tappa attuale evidenziata e i totali sotto la tabella', () => {
+    const { element } = show('VIEWER', 'PENDING');
+
+    expect(element.querySelectorAll('.journey li').length).toBe(4);
+    expect(element.querySelector('.journey li.current')?.textContent).toContain('In attesa');
+    expect(element.querySelector('.totals .grand')?.textContent).toMatch(/Totale\s*€?\s*24[.,]40/);
+  });
 
   it("mostra i dati dell'ordine in italiano", () => {
     const { element } = show('ADMIN', 'PENDING');
@@ -97,5 +122,38 @@ describe('OrderDetail', () => {
   it("chi può solo consultare non vede nessuna azione", () => {
     const { buttons } = show('VIEWER', 'PENDING');
     expect(buttons.filter((b) => /Conferma|Spedisci|Annulla|consegnato/.test(b))).toEqual([]);
+  });
+});
+
+describe('journeyOf', () => {
+  const at = (day: number) => `2026-10-${day}T10:00:00Z`;
+  const base = (status: OrderStatus, to: OrderStatus[]) => ({
+    status,
+    history: to.map((s, i) => ({ from: null, to: s, reason: null, changedBy: 'admin', changedAt: at(20 + i) })),
+  });
+
+  it('un ordine appena creato ha la prima tappa in corso e le altre da fare', () => {
+    const steps = journeyOf(base('PENDING', ['PENDING']));
+
+    expect(steps.map((s) => s.state)).toEqual(['current', 'todo', 'todo', 'todo']);
+    expect(steps[0].at).toBe(at(20));
+    expect(steps[1].at).toBeNull();
+  });
+
+  it('le tappe già superate sono fatte, con la loro data, e quella attuale è in corso', () => {
+    const steps = journeyOf(base('SHIPPED', ['PENDING', 'CONFIRMED', 'SHIPPED']));
+
+    expect(steps.map((s) => s.state)).toEqual(['done', 'done', 'current', 'todo']);
+    expect(steps[1].at).toBe(at(21));
+  });
+
+  it('un ordine consegnato ha il percorso completo', () => {
+    const steps = journeyOf(base('DELIVERED', ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED']));
+
+    expect(steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'current']);
+  });
+
+  it('un ordine annullato non ha percorso: si mostra l\'annullamento', () => {
+    expect(journeyOf(base('CANCELLED', ['PENDING', 'CANCELLED']))).toEqual([]);
   });
 });
