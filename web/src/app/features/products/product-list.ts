@@ -104,6 +104,7 @@ import { ProductDialog, ProductDialogData } from './product-dialog';
             <th mat-header-cell *matHeaderCellDef>Attivo</th>
             <td mat-cell *matCellDef="let p">
               <mat-slide-toggle
+                hideIcon
                 [checked]="p.active"
                 [disabled]="!auth.isAdmin()"
                 (change)="toggle(p, $event.checked)"

@@ -12,6 +12,7 @@ import { CustomersApi } from '../../core/api';
 import { AuthService } from '../../core/auth.service';
 import { errorMessage } from '../../core/errors';
 import { Address, AddressInput, Customer, CustomerInput } from '../../core/models';
+import { EmptyState } from '../../shared/empty-state';
 import { AddressDialog } from './address-dialog';
 
 /** Controllo della cifra di controllo della partita IVA, lo stesso algoritmo del server. */
@@ -39,11 +40,15 @@ export function validVatNumber(value: string): boolean {
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
+    EmptyState,
   ],
   template: `
     <div class="page">
       <div class="page-header">
         <a mat-icon-button routerLink="/clienti" aria-label="Torna ai clienti"><mat-icon>arrow_back</mat-icon></a>
+        @if (customer(); as c) {
+          <span class="avatar-lg" aria-hidden="true">{{ initials(c.name) }}</span>
+        }
         <h1>{{ customer() ? customer()!.name : 'Nuovo cliente' }}</h1>
         @if (customer(); as c) {
           <span class="chip" [class]="c.status === 'ACTIVE' ? 'ok' : 'bad'">{{
@@ -60,6 +65,7 @@ export function validVatNumber(value: string): boolean {
       }
 
       <form class="card" [formGroup]="form" (ngSubmit)="save()">
+        <h2 class="card-title">Dati anagrafici</h2>
         <div class="form-grid">
           <mat-form-field>
             <mat-label>Ragione sociale o nome</mat-label>
@@ -93,8 +99,8 @@ export function validVatNumber(value: string): boolean {
       </form>
 
       @if (customer(); as c) {
-        <div class="page-header addresses-head">
-          <h1>Indirizzi</h1>
+        <div class="addresses-head">
+          <h2>Indirizzi</h2>
           @if (auth.canWrite()) {
             <button mat-stroked-button (click)="editAddress(null)"><mat-icon>add</mat-icon>Aggiungi</button>
           }
@@ -102,53 +108,102 @@ export function validVatNumber(value: string): boolean {
         <div class="addresses">
           @for (a of c.addresses; track a.id) {
             <div class="card address">
-              <div>
-                <span class="chip info">{{ a.type === 'SHIPPING' ? 'Spedizione' : 'Fatturazione' }}</span>
-                @if (a.defaultAddress) {
-                  <span class="chip ok">Predefinito</span>
-                }
+              <span class="addr-icon"><mat-icon>{{ a.type === 'SHIPPING' ? 'local_shipping' : 'receipt_long' }}</mat-icon></span>
+              <div class="addr-body">
+                <div class="addr-tags">
+                  <span class="chip info">{{ a.type === 'SHIPPING' ? 'Spedizione' : 'Fatturazione' }}</span>
+                  @if (a.defaultAddress) {
+                    <span class="chip ok">Predefinito</span>
+                  }
+                </div>
+                <p>
+                  {{ a.street }}<br />{{ a.postalCode }} {{ a.city }} ({{ a.province }}) · {{ a.country }}
+                </p>
               </div>
-              <p>
-                {{ a.street }}<br />{{ a.postalCode }} {{ a.city }} ({{ a.province }}) · {{ a.country }}
-              </p>
               @if (auth.canWrite()) {
                 <div class="address-actions">
-                  <button mat-button (click)="editAddress(a)">Modifica</button>
-                  <button mat-button (click)="removeAddress(a)">Elimina</button>
+                  <button mat-icon-button (click)="editAddress(a)" aria-label="Modifica l'indirizzo"><mat-icon>edit</mat-icon></button>
+                  <button mat-icon-button (click)="removeAddress(a)" aria-label="Elimina l'indirizzo"><mat-icon>delete</mat-icon></button>
                 </div>
               }
             </div>
           } @empty {
-            <p class="empty card">
-              Nessun indirizzo. Per creare ordini serve almeno un indirizzo di spedizione.
-            </p>
+            <div class="card wide-empty">
+              <app-empty-state
+                icon="location_off"
+                title="Nessun indirizzo"
+                message="Per creare ordini serve almeno un indirizzo di spedizione."
+              />
+            </div>
           }
         </div>
       }
     </div>
   `,
   styles: `
+    .avatar-lg {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+      font: var(--mat-sys-title-medium);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
     .actions {
       display: flex;
       justify-content: flex-end;
     }
     .addresses-head {
-      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 28px 0 12px;
+    }
+    .addresses-head h2 {
+      margin: 0;
+      font: var(--mat-sys-title-medium);
+      font-weight: 600;
     }
     .addresses {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
       gap: 12px;
     }
-    .address p {
-      margin: 8px 0;
+    .address {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
     }
-    .address .chip {
+    .addr-icon {
+      display: grid;
+      place-items: center;
+      flex: none;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: var(--mat-sys-surface-container-high);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .addr-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .address p {
+      margin: 8px 0 0;
+    }
+    .addr-tags .chip {
       margin-right: 6px;
     }
     .address-actions {
       display: flex;
-      justify-content: flex-end;
+      flex: none;
+    }
+    .wide-empty {
+      grid-column: 1 / -1;
     }
   `,
 })
@@ -178,6 +233,15 @@ export class CustomerForm implements OnInit {
     if (!this.auth.canWrite()) this.form.disable();
     const id = this.id();
     if (id) this.load(id);
+  }
+
+  protected initials(name: string): string {
+    return name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((word) => word[0])
+      .join('');
   }
 
   protected save(): void {

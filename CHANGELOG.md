@@ -5,7 +5,7 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/); il versiona
 ## [Non rilasciato]
 
 ### Modificato
-- **Interfaccia rinnovata** (ADR 0022, prima parte dell'incidenza #39): sistema di design con palette petrolio e token, tema chiaro, scuro o del sistema, menu laterale scuro comprimibile (cassetto sui telefoni), barra superiore con percorso e utente, accesso a due colonne e un nuovo cruscotto con fascia «da gestire», quote per stato, anello degli ordini, scorte con barre e attività con icone per tipo.
+- **Interfaccia rinnovata** (ADR 0022, incidenza #39): sistema di design con palette petrolio e token, tema chiaro, scuro o del sistema, menu laterale scuro comprimibile (cassetto sui telefoni), barra superiore con percorso e utente, accesso a due colonne e cruscotto con fascia «da gestire», quote per stato, anello degli ordini, scorte e attività con icone. Elenchi con filtri nella scheda, righe segnaposto e stati vuoti; dettaglio ordine con percorso, banner di annullamento, totali e storico a linea del tempo; nuovo ordine con riepilogo fisso; scheda cliente con avatar e indirizzi con icone; collegamento «Vai al contenuto» per la tastiera. Nuove immagini del README.
 
 ## [1.1.0] - 2026-10-22
 

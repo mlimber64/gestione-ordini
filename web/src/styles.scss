@@ -132,6 +132,14 @@ body {
   max-width: 1280px;
   margin: 0 auto;
   padding: 28px 32px 56px;
+  animation: page-in 0.2s ease-out;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
 .page-header {
@@ -269,7 +277,7 @@ body {
   }
 }
 
-.who {
+.cell-who {
   display: inline-flex;
   align-items: center;
   gap: 12px;
@@ -319,8 +327,9 @@ tr.clickable:hover .chev {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 4px 16px;
+  align-items: start;
 }
 
 // --- Stati ----------------------------------------------------------------------------------------------------
@@ -390,6 +399,17 @@ tr.clickable:hover .chev {
   100% {
     background-position: 0 50%;
   }
+}
+
+// Finestre di dialogo: titolo in grassetto e pulsanti con più respiro
+.mdc-dialog__title {
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+}
+
+.mat-mdc-dialog-actions {
+  gap: 8px;
+  padding: 12px 24px 20px !important;
 }
 
 @media (max-width: 900px) {

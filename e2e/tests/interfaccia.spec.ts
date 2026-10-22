@@ -54,3 +54,23 @@ test.describe('interfaccia', () => {
     await expect(sidebar).not.toBeInViewport();
   });
 });
+
+test.describe('accessibilità', () => {
+  test('il collegamento «Vai al contenuto» è il primo della pagina e porta il focus sul contenuto senza cambiare pagina', async ({ page }) => {
+    await login(page);
+    await expect(page.getByText('In diretta', { exact: true })).toBeVisible();
+    await page.goto('/ordini');
+    await expect(page.getByText('In diretta', { exact: true })).toBeVisible();
+
+    // Primo elemento raggiungibile da tastiera, in ordine di documento
+    const first = await page.evaluate(() => document.querySelector('a[href], button')?.textContent?.trim());
+    expect(first).toBe('Vai al contenuto');
+
+    const skip = page.getByRole('link', { name: 'Vai al contenuto' });
+    await skip.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(/\/ordini$/);
+    await expect(page.locator('main#contenuto')).toBeFocused();
+  });
+});

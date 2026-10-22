@@ -21,7 +21,7 @@ import { MatIconModule } from '@angular/material/icon';
       flex-direction: column;
       align-items: center;
       gap: 6px;
-      padding: 48px 24px;
+      padding: var(--empty-pad, 48px) 24px;
       text-align: center;
       color: var(--mat-sys-on-surface-variant);
     }

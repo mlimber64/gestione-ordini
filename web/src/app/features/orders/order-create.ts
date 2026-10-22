@@ -16,6 +16,7 @@ import { debounceTime, distinctUntilChanged, filter, map, of, switchMap } from '
 import { CatalogApi, CustomersApi, OrdersApi } from '../../core/api';
 import { errorMessage } from '../../core/errors';
 import { Customer, CustomerSummary, Product } from '../../core/models';
+import { EmptyState } from '../../shared/empty-state';
 
 interface Line {
   product: Product;
@@ -37,6 +38,7 @@ interface Line {
     MatIconModule,
     MatTableModule,
     MatProgressBarModule,
+    EmptyState,
   ],
   template: `
     <div class="page">
@@ -48,8 +50,10 @@ interface Line {
         <mat-progress-bar mode="indeterminate" />
       }
 
+      <div class="layout">
+      <div class="main">
       <section class="card block">
-        <h2>1. Cliente</h2>
+        <h2><span class="num-badge">1</span>Cliente</h2>
         <mat-form-field>
           <mat-label>Cerca il cliente per nome, codice o email</mat-label>
           <input matInput [formControl]="customerSearch" [matAutocomplete]="customerAuto" />
@@ -84,7 +88,7 @@ interface Line {
       </section>
 
       <section class="card block">
-        <h2>2. Prodotti</h2>
+        <h2><span class="num-badge">2</span>Prodotti</h2>
         <div class="add-line">
           <mat-form-field class="grow">
             <mat-label>Cerca il prodotto per nome o SKU</mat-label>
@@ -115,24 +119,18 @@ interface Line {
                 <td mat-cell *matCellDef="let l">
                   <strong>{{ l.product.sku }}</strong> · {{ l.product.name }}
                 </td>
-                <td mat-footer-cell *matFooterCellDef></td>
               </ng-container>
               <ng-container matColumnDef="qty">
                 <th mat-header-cell *matHeaderCellDef class="num">Qtà</th>
                 <td mat-cell *matCellDef="let l" class="num">{{ l.quantity }}</td>
-                <td mat-footer-cell *matFooterCellDef></td>
               </ng-container>
               <ng-container matColumnDef="price">
                 <th mat-header-cell *matHeaderCellDef class="num">Prezzo</th>
                 <td mat-cell *matCellDef="let l" class="num">{{ l.product.unitPrice | currency: 'EUR' }}</td>
-                <td mat-footer-cell *matFooterCellDef class="num">Totale stimato</td>
               </ng-container>
               <ng-container matColumnDef="total">
                 <th mat-header-cell *matHeaderCellDef class="num">Totale con IVA</th>
-                <td mat-cell *matCellDef="let l" class="num">{{ lineGross(l) | currency: 'EUR' }}</td>
-                <td mat-footer-cell *matFooterCellDef class="num">
-                  <strong>{{ total() | currency: 'EUR' }}</strong>
-                </td>
+                <td mat-cell *matCellDef="let l" class="num"><strong>{{ lineGross(l) | currency: 'EUR' }}</strong></td>
               </ng-container>
               <ng-container matColumnDef="remove">
                 <th mat-header-cell *matHeaderCellDef></th>
@@ -141,33 +139,157 @@ interface Line {
                     <mat-icon>close</mat-icon>
                   </button>
                 </td>
-                <td mat-footer-cell *matFooterCellDef></td>
               </ng-container>
               <tr mat-header-row *matHeaderRowDef="columns"></tr>
               <tr mat-row *matRowDef="let row; columns: columns"></tr>
-              <tr mat-footer-row *matFooterRowDef="columns"></tr>
             </table>
           </div>
         } @else {
-          <p class="empty">Nessun prodotto aggiunto.</p>
+          <app-empty-state icon="add_shopping_cart" title="Nessun prodotto aggiunto" message="Cerca un prodotto, scegli la quantità e premi Aggiungi." />
         }
       </section>
 
       <section class="card block">
-        <h2>3. Note</h2>
+        <h2><span class="num-badge">3</span>Note</h2>
         <mat-form-field>
           <mat-label>Note (facoltative)</mat-label>
           <textarea matInput [formControl]="notes" rows="2" maxlength="500"></textarea>
         </mat-form-field>
       </section>
 
-      <div class="submit">
+      </div>
+
+      <aside class="side card" aria-label="Riepilogo dell'ordine">
+        <h2 class="side-title">Riepilogo</h2>
+        <ul class="checks">
+          <li [class.ok]="!!customer()"><mat-icon>{{ customer() ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>Cliente scelto</li>
+          <li [class.ok]="shippingAddresses().length > 0 && !!customer()">
+            <mat-icon>{{ shippingAddresses().length > 0 && customer() ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>Indirizzo di spedizione
+          </li>
+          <li [class.ok]="lines().length > 0"><mat-icon>{{ lines().length > 0 ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>Almeno un prodotto</li>
+        </ul>
+        <dl class="sum">
+          <div>
+            <dt>Cliente</dt>
+            <dd>{{ customer()?.name ?? '–' }}</dd>
+          </div>
+          <div>
+            <dt>Righe</dt>
+            <dd>{{ lines().length }}</dd>
+          </div>
+          <div>
+            <dt>Pezzi</dt>
+            <dd>{{ pieces() }}</dd>
+          </div>
+        </dl>
+        <div class="grand">
+          <span>Totale stimato</span>
+          <strong>{{ total() | currency: 'EUR' }}</strong>
+        </div>
+        <small class="muted">Il totale definitivo, con gli arrotondamenti per riga, lo calcola il server.</small>
+        <button mat-flat-button class="cta" (click)="submit()" [disabled]="!canSubmit() || busy()">Crea ordine e riserva la merce</button>
         <a mat-button routerLink="/ordini">Annulla</a>
-        <button mat-flat-button (click)="submit()" [disabled]="!canSubmit() || busy()">Crea ordine e riserva la merce</button>
+      </aside>
       </div>
     </div>
   `,
   styles: `
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 16px;
+      align-items: start;
+    }
+    .main {
+      display: grid;
+      gap: 12px;
+    }
+    .num-badge {
+      display: inline-grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+      border-radius: 50%;
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+      font: var(--mat-sys-label-medium);
+      font-weight: 600;
+    }
+    .side {
+      position: sticky;
+      top: 88px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .side-title {
+      margin: 0;
+    }
+    .checks {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .checks li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .checks mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+    .checks li.ok {
+      color: var(--app-ok-fg);
+    }
+    .sum {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding-top: 12px;
+      border-top: 1px solid var(--app-border);
+    }
+    .sum div {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .sum dt {
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .sum dd {
+      margin: 0;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+    .grand {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding-top: 12px;
+      border-top: 1px solid var(--app-border);
+    }
+    .grand strong {
+      font: var(--mat-sys-headline-small);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .cta {
+      height: 46px;
+    }
+    @media (max-width: 1000px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .side {
+        position: static;
+      }
+    }
     .block {
       margin-bottom: 12px;
       display: flex;
@@ -189,14 +311,9 @@ interface Line {
     .qty {
       width: 120px;
     }
-    .submit {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    }
     .warning {
-      color: #7a4a00;
-      background: #fff1d6;
+      color: var(--app-warn-fg);
+      background: var(--app-warn-bg);
       padding: 8px 12px;
       border-radius: 6px;
       margin: 0;
@@ -228,6 +345,8 @@ export class OrderCreate {
   protected readonly total = computed(() =>
     this.lines().reduce((sum, line) => sum + this.lineGross(line), 0),
   );
+
+  protected readonly pieces = computed(() => this.lines().reduce((sum, line) => sum + line.quantity, 0));
 
   protected readonly canSubmit = computed(
     () => !!this.customer() && this.shippingAddresses().length > 0 && this.lines().length > 0,

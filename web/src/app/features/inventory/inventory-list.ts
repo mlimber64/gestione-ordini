@@ -52,7 +52,7 @@ import { StockAction, StockDialog, StockDialogData, StockDialogResult } from './
             <input matInput [formControl]="query" />
             <mat-icon matSuffix>search</mat-icon>
           </mat-form-field>
-          <mat-slide-toggle [formControl]="lowOnly">Solo scorte basse</mat-slide-toggle>
+          <mat-slide-toggle hideIcon [formControl]="lowOnly">Solo scorte basse</mat-slide-toggle>
         </div>
         @if (loading() && rows().length === 0) {
           <app-table-skeleton [cols]="7" />
