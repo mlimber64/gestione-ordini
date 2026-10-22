@@ -6,7 +6,7 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/); il versiona
 
 ## [1.1.0] - 2026-10-22
 
-Sette miglioramenti: test di punta a punta, HTTPS con HTTP/2, pagamenti, immagini pubblicate, CDC con Debezium, accesso con Keycloak e refresh in un cookie HttpOnly.
+Novità principali: accesso con Keycloak e refresh in un cookie HttpOnly, CDC con Debezium, pagamenti, immagini pubblicate su GHCR, HTTPS con HTTP/2, pulizia delle notifiche e test di punta a punta con Playwright.
 
 ### Aggiunto
 - Accesso con **Keycloak** come alternativa al login interno (ADR 0021): `deploy/docker-compose.keycloak.yml` aggiunge Keycloak 26 con un realm importato (utenti `admin`, `operatore`, `lettore`) dietro nginx su `/auth`. Authorization Code con PKCE sulla pagina di accesso di Keycloak; i due servizi verificano i token RS256 con le chiavi pubbliche (JWKS), senza segreto condiviso. Nuova proprietà `app.auth.mode` (`local` di base, oppure `oidc`), `GET /api/v1/auth/config`, pulsante «Accedi con Keycloak» e job `e2e` della CI anche in questa configurazione.
