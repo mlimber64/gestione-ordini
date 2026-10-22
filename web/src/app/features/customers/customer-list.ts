@@ -70,7 +70,7 @@ import { TableSkeleton } from '../../shared/table-skeleton';
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef>Cliente</th>
             <td mat-cell *matCellDef="let c">
-              <span class="who">
+              <span class="cell-who">
                 <span class="avatar-sm" aria-hidden="true">{{ initials(c.name) }}</span>
                 <span class="stack">
                   <strong>{{ c.name }}</strong>
