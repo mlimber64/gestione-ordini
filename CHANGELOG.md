@@ -2,6 +2,11 @@
 
 Il formato segue [Keep a Changelog](https://keepachangelog.com/it/); il versionamento segue [SemVer](https://semver.org/lang/it/).
 
+## [Non rilasciato]
+
+### Aggiunto
+- Test di punta a punta con Playwright (`e2e/`): accesso, creazione e conferma di un ordine e notifiche ricevute in diretta, sull'applicazione completa avviata con il profilo `app`. Girano nel nuovo job `e2e` della CI.
+
 ## [1.0.0] - 2026-10-21
 
 Prima versione stabile.

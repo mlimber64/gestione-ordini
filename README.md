@@ -123,6 +123,18 @@ In questa modalità l'utente è `admin` / `admin-dev-1234`.
 
 I test usano Testcontainers: richiedono solo Docker in esecuzione. `./mvnw verify` esegue anche il controllo di copertura minima.
 
+### Test nel browser
+
+I test di punta a punta (Playwright, cartella `e2e/`) provano l'applicazione completa: accesso, nuovo ordine, conferma e notifiche in diretta. Non avviano nulla da soli, quindi serve prima lo stack Docker:
+
+```bash
+docker compose -f deploy/docker-compose.yml --profile app up -d --build
+cd e2e && npm ci && npx playwright install chromium
+npm test                  # npm run test:headed per vedere il browser
+```
+
+Gli indirizzi e le credenziali si cambiano con `E2E_BASE_URL`, `E2E_USER` ed `E2E_PASSWORD`. In CI girano nel job `e2e`.
+
 ### API
 
 - Documentazione interattiva: `http://localhost:8081/swagger-ui.html`
@@ -162,6 +174,7 @@ services/
   order-service/          Spring MVC, JPA, Flyway, outbox
   notification-service/   WebFlux, R2DBC, consumer Kafka, SSE
 web/                      Angular 22 e configurazione nginx
+e2e/                      Test nel browser con Playwright
 deploy/                   Docker Compose, Prometheus, Grafana, dati di esempio
 docs/                     ADR, qualità, immagini
 .github/                  CI, template di issue e pull request, Dependabot
