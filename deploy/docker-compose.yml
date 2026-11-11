@@ -118,7 +118,7 @@ services:
 
   prometheus:
     profiles: [observability]
-    image: prom/prometheus:v3.15.1
+    image: prom/prometheus:v3.16.0
     container_name: gestione-ordini-prometheus
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
