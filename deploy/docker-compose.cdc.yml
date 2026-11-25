@@ -19,7 +19,7 @@ services:
 
   connect:
     profiles: [app]
-    image: quay.io/debezium/connect:3.7.0.Final
+    image: quay.io/debezium/connect:3.7.1.Final
     container_name: gestione-ordini-connect
     environment:
       BOOTSTRAP_SERVERS: kafka:9092
@@ -49,7 +49,7 @@ services:
 
   connector-init:
     profiles: [app]
-    image: quay.io/debezium/connect:3.7.0.Final
+    image: quay.io/debezium/connect:3.7.1.Final
     container_name: gestione-ordini-connector-init
     entrypoint: ["sh", "/config/register-connector.sh"]
     environment:
